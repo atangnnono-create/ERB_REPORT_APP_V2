@@ -1,0 +1,10 @@
+fastapi
+uvicorn
+sqlalchemy
+python-dotenv
+passlib
+python-jose
+pandas
+gspread
+google-auth
+google-auth-oauthlib
