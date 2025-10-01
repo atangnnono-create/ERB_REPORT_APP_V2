@@ -19,9 +19,14 @@ if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=port)
 
 
-
 # DB init (dev only, use Alembic in prod)
 Base.metadata.create_all(bind=engine)
+
+
+#----------------root route---------------------
+@app.get("/")
+def root():
+    return {"message": "Backend is running 🚀"}
 
 # -------- AUTH --------
 @app.post("/auth/register", response_model=schemas.UserResponse)

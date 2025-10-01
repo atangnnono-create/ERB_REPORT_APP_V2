@@ -11,7 +11,7 @@ class APIClient:
     def register(self, username: str, password: str) -> Tuple[bool, Dict[str, Any]]:
         try:
             resp = self.session.post(
-                f"{self.base_url}/auth/register",
+                f"{self.base_url}/users/register",
                 json={"username": username, "password": password},  # JSON is correct here
                 headers={"Content-Type": "application/json"}
             )
