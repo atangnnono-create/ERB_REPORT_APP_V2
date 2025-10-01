@@ -1,6 +1,6 @@
 # backend/reset_db.py
 
-from backend.database import Base, engine
+from database import Base, engine
 
 
 # WARNING: This will delete all existing tables and data!
