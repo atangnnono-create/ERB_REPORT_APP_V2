@@ -1,7 +1,7 @@
 # backend/reset_db.py
 
 from backend.database import Base, engine
-from backend import models
+
 
 # WARNING: This will delete all existing tables and data!
 Base.metadata.drop_all(bind=engine)
