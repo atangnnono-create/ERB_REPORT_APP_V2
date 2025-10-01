@@ -1,7 +1,8 @@
 from typing import Optional, List
 from pydantic import BaseModel
+from datetime import datetime
 
-# -------- AUTH --------
+# ---------------- TOKEN SCHEMAS ----------------
 class Token(BaseModel):
     access_token: str
     token_type: str
@@ -20,7 +21,7 @@ class UserResponse(UserBase):
     id: int
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 # -------- COMPETENCIES --------
 class CompetencyCreate(BaseModel):
@@ -32,7 +33,7 @@ class CompetencyResponse(CompetencyCreate):
     id: int
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 # -------- REPORTS --------
 class ReportCreate(BaseModel):
@@ -46,7 +47,7 @@ class ReportResponse(ReportCreate):
     competencies: List[CompetencyResponse] = []
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 class ReportUpdate(BaseModel):
     title: Optional[str] = None

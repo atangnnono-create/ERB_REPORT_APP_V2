@@ -2,11 +2,8 @@ from fastapi import FastAPI, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 from typing import List
-from . import models, schemas, crud, auth
-from .database import engine, Base, get_db
-
-import uvicorn
-from fastapi import FastAPI
+from backend import models, schemas, crud, auth
+from . database import engine, Base, get_db
 from backend.routers import reports, users
 
 app = FastAPI()
@@ -17,6 +14,7 @@ app.include_router(users.router)
 if __name__ == "__main__":
     # Render provides $PORT
     import os
+    import uvicorn
     port = int(os.environ.get("PORT", 8000))
     uvicorn.run(app, host="0.0.0.0", port=port)
 
@@ -24,8 +22,6 @@ if __name__ == "__main__":
 
 # DB init (dev only, use Alembic in prod)
 Base.metadata.create_all(bind=engine)
-
-app = FastAPI()
 
 # -------- AUTH --------
 @app.post("/auth/register", response_model=schemas.UserResponse)

@@ -1,0 +1,98 @@
+RELATIVE IMPORTS
+1. There is an issue of relative imports with file dependencies
+
+
+CIRCULAR IMPORT PROBLEM
+1. Issue was raised with schema.py by deepseek
+
+
+DATABASE INDEXING(models.py)
+1. Add Indexes for Better Performance
+
+
+DATABASE TIMESTAMPS COLUMNS CREATION
+from sqlalchemy import DateTime
+from sqlalchemy.sql import func
+
+# Add to each model
+created_at = Column(DateTime(timezone=True), server_default=func.now())
+updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+
+These timestamps data columns were added to the tables(models).
+They are very useful data. They are not yet used by CRUD functions
+
+
+AUTHORISATION TOKEN
+
+1. ACCESS_TOKEN_EXPIRE_MINUTES increased to 2 hours
+
+
+#########BACKEND/UTILS AND BACKEND/AUTH DUPLICATES##########
+Duplicate functionality with auth.py and utils.py files.
+Here's what's overlapping:
+
+Duplicate Functions:
+hash_password / get_password_hash
+
+verify_password (same in both)
+
+create_access_token (same in both)
+
+Password context setup
+
+Option 1: Keep utils.py for utilities only
+Remove auth-related functions from utils.py and keep only environment/config stuff:
+
+Option 2: Consolidate in auth.py (Recommended)
+Move everything to auth.py and remove auth from utils.py:
+
+Option 3: Keep both but avoid imports
+If you want to keep both files, make sure you don't have circular imports by:
+
+Using only auth.py for authentication
+
+Using utils.py for non-auth utilities
+
+Importing environment variables from one place only
+
+I'd recommend Option 2 - it's cleaner to have all authentication logic in one place.
+
+
+##############IMPORT OUTSIDE OF THE CURRENT DIRECTORY#############################
+
+from .. import models, schemas, crud
+from ..database import get_db  # Make sure this matches your database.py
+from ..auth import get_current_user
+
+##############IMPORT INSIDE THE CURRENT DIRECTORY#############################
+from . import models, schemas
+from .auth import get_password_hash
+
+############ABSOLUTE IMPORTS#################
+Absolute imports specify the full path from the project's
+root directory to the module or package being imported.
+This method clearly defines the location of the resource
+within the project's structure.
+
+Examples
+from myproject.subpackage.module import function
+from sqlalchemy.orm import Session
+import models
+import schemas
+from password_utils import get_password_hash
+
+
+################ RELATIVE IMPORTS ########################
+Relative imports reference modules or packages based on their
+location relative to the current module. They utilize dot notation
+to indicate the path within a shared package structure.
+
+Examples
+# Import a module in the same directory
+from . import mymodule
+
+# Import a module in a parent directory
+from .. import parent_module
+
+# Import a module in a sibling directory
+from .sibling_package import sibling_module

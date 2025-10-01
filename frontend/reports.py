@@ -3,7 +3,7 @@ import streamlit as st
 import requests
 import json
 
-API_BASE_URL = "http://127.0.0.1:8000"  # adjust if backend runs elsewhere
+API_BASE_URL = "https://erb-backend.onrender.com"  # adjust if backend runs elsewhere
 
 # --------------------- Backend API Calls ---------------------
 def fetch_reports(token: str):

@@ -23,3 +23,6 @@ Thumbs.db
 
 # Ignore Jupyter checkpoints (if any)
 .ipynb_checkpoints/
+
+#Developer notes
+notes

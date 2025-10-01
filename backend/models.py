@@ -1,6 +1,8 @@
 from sqlalchemy import Column, Integer, String, ForeignKey, Text
 from sqlalchemy.orm import relationship
 from .database import Base
+from sqlalchemy import DateTime
+from sqlalchemy.sql import func
 
 class User(Base):
     __tablename__ = "users"
@@ -9,6 +11,9 @@ class User(Base):
     hashed_password = Column(String, nullable=False)
     reports = relationship("Report", back_populates="owner")
     competencies = relationship("Competency", back_populates="owner")
+
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
 
 class Report(Base):
@@ -20,6 +25,9 @@ class Report(Base):
 
     owner = relationship("User", back_populates="reports")
     competencies = relationship("Competency", back_populates="report")
+
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
 
 class Competency(Base):
@@ -33,3 +41,6 @@ class Competency(Base):
     report_id = Column(Integer, ForeignKey("reports.id"))
     report = relationship("Report", back_populates="competencies")
     owner = relationship("User", back_populates="competencies")
+
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())

@@ -28,7 +28,7 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-API_BASE_URL = os.environ.get("API_BASE_URL", "http://localhost:8000")
+API_BASE_URL = os.environ.get("API_BASE_URL", "https://erb-backend.onrender.com")
 
 # ----------------- Session Init ----------------- #
 if "api" not in st.session_state:
