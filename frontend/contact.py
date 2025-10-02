@@ -152,7 +152,7 @@ def save_to_local_backup(name, email, message):
 def show():
     st.set_page_config(page_title="Contact - Engineering Report Deck")
 
-    st.title("📞 Contact Us")
+    st.header("📞 Contact Us")
     st.write(
         "Have questions, feedback, or need support? We'd love to hear from you! "
         "Fill out the form below and we'll get back to you as soon as possible."
@@ -233,7 +233,7 @@ def show():
 
     with col1:
         st.write("**📧 Direct Email**")
-        st.write("lefa.molokwe@example.com")  # Replace with actual email
+        st.write("lefamolokwe@gmail.com")  # Replace with actual email
         st.write("_Typically respond within 24 hours_")
 
     with col2:

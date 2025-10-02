@@ -1,7 +1,6 @@
 from sqlalchemy.orm import Session
 from backend import models, schemas
-
-
+from backend.utils import hash_password  # ✅ Import from utils instead of auth
 
 # -------- USERS --------
 def get_user_by_username(db: Session, username: str):
@@ -11,8 +10,7 @@ def get_user(db: Session, user_id: int):
     return db.query(models.User).filter(models.User.id == user_id).first()
 
 def create_user(db: Session, user: schemas.UserCreate):
-    from .auth import get_password_hash
-    hashed_password = get_password_hash(user.password)
+    hashed_password = hash_password(user.password)  # ✅ Use utils function
     db_user = models.User(username=user.username, hashed_password=hashed_password)
     db.add(db_user)
     db.commit()

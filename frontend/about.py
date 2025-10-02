@@ -76,7 +76,7 @@ def show():
             st.write("**Backend Connection:**")
             backend_url = st.session_state.get(
                 'backend_url',
-                os.getenv('BACKEND_URL', 'https://erb-backend.onrender.com')
+                os.getenv('BACKEND_URL', 'http://127.0.0.1:8000')
             )
             st.code(f"Backend URL: {backend_url}")
 
@@ -154,7 +154,7 @@ def show():
 
     try:
         backend_response = requests.get(
-            st.session_state.get('backend_url', 'https://erb-backend.onrender.com') + "/",
+            st.session_state.get('backend_url', 'http://127.0.0.1:8000') + "/",
             timeout=3
         )
         backend_available = backend_response.status_code == 200
