@@ -2,7 +2,7 @@ import requests
 from typing import Dict, Any, Tuple, List
 
 class APIClient:
-    def __init__(self, base_url: str = "http://https://erb-backend.onrender.com"):
+    def __init__(self, base_url: str = "https://erb-backend.onrender.com"):
         self.base_url = base_url
         self.token: str | None = None
         self.session = requests.Session()
