@@ -16,9 +16,11 @@ class UserBase(BaseModel):
 
 class UserCreate(UserBase):
     password: str
+    role: Optional[str] = "user"  # ✅ Add role field with default
 
 class UserResponse(UserBase):
     id: int
+    role: str  # ✅ Add role to response
 
     class Config:
         from_attributes = True
