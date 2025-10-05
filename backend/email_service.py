@@ -14,7 +14,7 @@ class EmailService:
         self.smtp_port = int(os.getenv("SMTP_PORT", 587))
         self.sender_email = os.getenv("SMTP_USERNAME")
         self.sender_password = os.getenv("SMTP_PASSWORD")
-        self.base_url = os.getenv("BASE_URL", "http://localhost:8000")
+        self.base_url = os.getenv("BASE_URL", "https://erb-backend.onrender.com")
         self.app_name = "Engineering Report Deck"
 
     def send_email(self, to_email: str, subject: str, html_content: str, text_content: str = None):
