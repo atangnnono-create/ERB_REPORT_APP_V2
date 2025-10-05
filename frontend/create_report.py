@@ -156,6 +156,36 @@ def create_report_ui():
     st.subheader(f"Competency {current_index + 1} of {total_sections}: {section['title']}")
     st.info(section["instructions"])
 
+    ###############################################################################################
+
+
+    # Add status selection to the sidebar or main form
+    with st.sidebar:
+        st.subheader("📋 Report Status")
+
+        current_status = st.session_state.responses[selected_role].get('_status', 'draft')
+
+        status_options = ["draft", "submitted"]
+        status_descriptions = {
+            "draft": "💾 Save as draft (you can continue editing later)",
+            "submitted": "📤 Submit for review (ready for reviewer assessment)"
+        }
+
+        selected_status = st.radio(
+            "Report Status:",
+            options=status_options,
+            format_func=lambda x: status_descriptions[x],
+            index=status_options.index(current_status) if current_status in status_options else 0
+        )
+
+        st.session_state.responses[selected_role]['_status'] = selected_status
+
+        if selected_status == "submitted":
+            st.info("🔔 Your report will be submitted for review and cannot be edited further until reviewed.")
+
+    #############################################################################################################
+
+
     user_input = st.text_area(
         "✍️ Your response:",
         value=st.session_state.responses[selected_role].get(current_key, {}).get("response", ""),
@@ -195,6 +225,8 @@ def create_report_ui():
             if not has_responses(st.session_state.responses[selected_role]):
                 st.warning("No responses to submit.")
             else:
+                # Get the selected status
+                report_status = st.session_state.responses[selected_role].get('_status', 'draft')
                 # Sort keys
                 sorted_responses = dict(
                     sorted(st.session_state.responses[selected_role].items(), key=lambda x: x[0])
@@ -203,11 +235,12 @@ def create_report_ui():
                 # Build payload with competencies
                 competencies = []
                 for key, v in sorted_responses.items():
-                    competencies.append({
-                        "competency_key": key,
-                        "competency_title": v["title"],
-                        "user_response": v["response"],
-                    })
+                    if key != '_status':  # Exclude status from competencies
+                        competencies.append({
+                            "competency_key": key,
+                            "competency_title": v["title"],
+                            "user_response": v["response"],
+                        })
 
                 merged_content = "\n\n".join(
                     [f"{c['competency_key']} - {c['competency_title']}\n{c['user_response']}" for c in competencies]
@@ -217,11 +250,21 @@ def create_report_ui():
                     "title": f"{selected_role} Report",
                     "content": merged_content,
                     "competencies": competencies,
+                    "status": report_status  # ✅ Include status in payload
                 }
 
                 success, result = api.create_report(payload)
                 if success and "id" in result:
                     st.success(f"Report submitted! ✅ (ID: {result['id']})")
+
+                    # If submitted for review, show additional info
+                    if report_status == "submitted":
+                        st.info("📨 Your report has been submitted for review. You will be notified when it's reviewed.")
+
+                    # Clear the form if submitted
+                    if report_status != "draft":
+                        st.session_state.responses[selected_role] = {}
+                        st.session_state.current_section = 0
                 else:
                     msg = result.get("detail") or str(result)
                     st.error(f"Failed to submit report: {msg}")

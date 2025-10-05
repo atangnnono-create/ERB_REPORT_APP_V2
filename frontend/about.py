@@ -15,7 +15,7 @@ def show():
         # Try to connect to backend to check status
         backend_url = st.session_state.get(
             'backend_url',
-            os.getenv('BACKEND_URL', 'https://erb-backend.onrender.com')
+            os.getenv('BACKEND_URL', 'http://127.0.0.1:8000')
         )
 
         # Simple health check

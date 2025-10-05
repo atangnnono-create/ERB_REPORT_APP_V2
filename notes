@@ -96,3 +96,41 @@ from .. import parent_module
 
 # Import a module in a sibling directory
 from .sibling_package import sibling_module
+
+############ Stop server if running (CTRL+C)#####################
+del reports.db
+python -c "from backend.database import engine, Base;
+from backend.models import User, Report, Competency;
+ Base.metadata.create_all(bind=engine); print('✅ Database recreated with new User columns!')"
+
+
+
+#########################Deployment Strategy#############################
+
+Phase 1: Basic Roles (Immediate)
+Add role field to users
+
+Basic permission checks
+
+Role-based navigation
+
+Phase 2: Advanced Features
+User management dashboard
+
+Report review workflow
+
+Email verification
+
+Phase 3: Enterprise Features
+Role hierarchies
+
+Permission groups
+
+Audit logging
+
+📋 Next Steps:
+Start with Phase 1 - Basic role system
+
+Test thoroughly - Ensure existing users get appropriate roles
+
+Gradual rollout - Add features incrementally
