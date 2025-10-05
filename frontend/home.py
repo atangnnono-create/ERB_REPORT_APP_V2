@@ -42,7 +42,7 @@ def get_user_permissions(role: str) -> set:
     return permissions.get(role, set())
 
 
-API_BASE_URL = os.environ.get("API_BASE_URL", "http://127.0.0.1:8000")
+API_BASE_URL = os.environ.get("API_BASE_URL", "https://erb-backend.onrender.com")
 
 # ----------------- Session Init ----------------- #
 if "api" not in st.session_state:
