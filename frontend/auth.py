@@ -13,38 +13,47 @@ def login_ui(api: APIClient):
     if st.button("Login"):
         success = api.login(username, password)
         if success:
+            # ✅ Get user profile to store role and other info
+            user_success, user_info = api.get_current_user()
+            if user_success:
+                st.session_state.user_role = user_info.get("role", "candidate")
+                st.session_state.user_email = user_info.get("email", "")
+                st.session_state.full_name = user_info.get("full_name", "")
+            else:
+                st.session_state.user_role = "candidate"
+
             st.session_state.token = api.token
             st.session_state.username = username
             st.session_state.logged_in = True
             st.success("✅ Login successful!")
-            st.rerun()  # Forces redirect to main app
+            st.rerun()
         else:
             st.error("❌ Login failed: Invalid username or password")
 
+    # ✅ Return nothing - the function handles session state internally
+    return None
 
 def register_ui(api: APIClient):
     st.header("📝 Register")
 
-    username = st.text_input("New Username", key="register_username")
-    password = st.text_input("New Password", type="password", key="register_password")
+    with st.form("registration_form"):
+        username = st.text_input("Username *")
+        email = st.text_input("Email Address *")
+        full_name = st.text_input("Full Name")
+        password = st.text_input("Password *", type="password")
 
-    if st.button("Register", key="register_button"):
-        success, res = api.register(username, password)
+        submitted = st.form_submit_button("Register")
 
-        # Make sure res is always a dict
-        if not isinstance(res, dict):
-            st.error("⚠️ Unexpected server response.")
-            return
+        if submitted:
+            if not username or not email or not password:
+                st.error("Please fill in all required fields (*)")
+                return
 
-        if success and res.get("username"):
-            st.success(f"🎉 Registered {res['username']} successfully!")
+            success, res = api.register(username, email, password, full_name)
 
-            # Auto-login immediately after registration
-            if api.login(username, password):
-                st.session_state.token = api.token
-                st.session_state.username = username
-                st.session_state.logged_in = True
-                st.rerun()
-        else:
-            detail = res.get("detail", "Unknown error")
-            st.error(f"❌ Registration failed: {detail}")
+            if success and res.get("username"):
+                st.success(f"🎉 Registered {res['username']} successfully!")
+                st.info("You can now login with your credentials.")
+            else:
+                detail = res.get("detail", "Unknown error")
+                st.error(f"❌ Registration failed: {detail}")

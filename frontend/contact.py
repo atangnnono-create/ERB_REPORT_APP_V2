@@ -234,7 +234,7 @@ def show():
     with col1:
         st.write("**📧 Direct Email**")
         st.write("lefamolokwe@gmail.com")  # Replace with actual email
-        st.write("_Typically respond within 24 hours_")
+        st.write("_Typically responds within 24 hours_")
 
     with col2:
         st.write("**📱 Phone/WhatsApp**")
