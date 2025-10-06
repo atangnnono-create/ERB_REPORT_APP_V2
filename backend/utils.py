@@ -8,9 +8,9 @@ from fastapi import Request
 import json
 from typing import Optional, Dict, Any
 
-load_dotenv()  # Load .env in dev
-
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
+load_dotenv()  # Load .env in dev
 
 SECRET_KEY = os.getenv("SECRET_KEY")
 ALGORITHM = os.getenv("ALGORITHM", "HS256")
