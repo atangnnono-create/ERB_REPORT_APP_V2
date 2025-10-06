@@ -7,6 +7,14 @@ from google.oauth2 import service_account
 import json
 #from dot_env import load_dotenv
 
+# --- Create service account file from environment variable ---
+GOOGLE_CREDENTIALS_JSON = os.getenv("GOOGLE_CREDENTIALS_JSON")
+CREDENTIALS_FILE = os.getenv("CREDENTIALS_FILE", "/tmp/service_account.json")
+
+if GOOGLE_CREDENTIALS_JSON:
+    with open(CREDENTIALS_FILE, "w") as f:
+        f.write(GOOGLE_CREDENTIALS_JSON)
+
 # Add backend to path for imports
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 
