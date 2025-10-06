@@ -5,7 +5,7 @@ from datetime import datetime
 
 def verification_ui(api: APIClient):
     """Enhanced email verification interface"""
-    st.title("📧 Email Verification")
+    st.subheader("📧 Email Verification")
 
     # Check if user is verified
     success, user_data = api.get_current_user()
@@ -78,11 +78,11 @@ def show_verification_flow(api: APIClient, user_email: str, username: str):
 
     with col2:
         st.markdown("""
-        <div style="text-align: center; font-size: 80px;">
+        <div style="text-align: center; font-size: 40px;">
             📧
         </div>
         """, unsafe_allow_html=True)
-        st.write("")
+        #st.write("")
         st.write("### Verification Steps")
         st.write("1. Check your inbox for verification email")
         st.write("2. Click the verification link")
