@@ -11,9 +11,9 @@ sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 #load_dotenv()  # Load .env in dev
 
 # Google Sheets configuration
-SPREADSHEET_ID = os.getenv("SPREADSHEET_ID")
-SHEET_NAME = os.getenv("SHEET_NAME")
-CREDENTIALS_FILE = os.getenv("service_account.json")
+SPREADSHEET_ID = os.getenv(SPREADSHEET_ID)
+SHEET_NAME = os.getenv(SHEET_NAME)
+CREDENTIALS_FILE = os.getenv(service_account.json)
 
 
 def check_internet_connection():
