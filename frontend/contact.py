@@ -7,10 +7,12 @@ import sys
 # Add backend to path for imports
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 
+#load_dotenv()  # Load .env in dev
+
 # Google Sheets configuration
-SPREADSHEET_ID = "1HjPHcU34kV9yPQsl2u5tDbkVkCWcqXrAjG7l8O8j68c"  # Replace with your actual Google Sheet ID
-SHEET_NAME = "Messages"
-CREDENTIALS_FILE = "service_account.json"  # Path to your Google Service Account credentials
+SPREADSHEET_ID = os.getenv("SPREADSHEET_ID")
+SHEET_NAME = os.getenv("SHEET_NAME")
+CREDENTIALS_FILE = os.getenv("service_account.json")
 
 
 def check_internet_connection():
