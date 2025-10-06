@@ -3,6 +3,8 @@ import pandas as pd
 import time
 import os
 import sys
+from google.oauth2 import service_account
+import json
 #from dot_env import load_dotenv
 
 # Add backend to path for imports
@@ -42,7 +44,7 @@ def initialize_google_sheets():
     """Initialize Google Sheets client with error handling"""
     try:
         # Check prerequisites first
-        if not os.path.exists(CREDENTIALS_FILE):
+        if not CREDENTIALS_FILE:
             st.warning("🔐 Google Sheets credentials not found")
             st.info(f"Please ensure '{CREDENTIALS_FILE}' exists in your project directory")
             return None
