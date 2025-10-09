@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 import os  # ✅ Add this import
 from backend.database import engine, Base
-from backend.routers import reports, users, auth, admin, profile, stats, audit
+from backend.routers import reports, users, auth, admin, profile, stats, audit, review
 
 app = FastAPI()
 
@@ -13,6 +13,7 @@ app.include_router(admin.router)
 app.include_router(profile.router)
 app.include_router(stats.router)
 app.include_router(audit.router)
+app.include_router(review.router)
 
 if __name__ == "__main__":
     import os
