@@ -1,8 +1,9 @@
 import os
 import streamlit as st
-from api_client import APIClient
-import auth, reports, create_report, admin, profile
-import about, contact, verification
+from services.api_client import APIClient
+import profile, about, contact, create_report,auth, reports
+from components.admin import admin
+from services import verification
 
 st.set_page_config(page_title="🏭 Engineering Report Deck", layout="centered")
 # ================== APP BANNER ==================
@@ -77,6 +78,16 @@ if st.session_state.logged_in:
     user_role = st.session_state.get("user_role", "candidate")
     permissions = get_user_permissions(user_role)
 
+#########################TEMPORARY USER ROLE DEBUG############################################################
+# In frontend/home.py, add this after the login check
+if st.session_state.logged_in:
+    # Debug information
+    with st.sidebar.expander("🔍 Debug Info"):
+        st.write(f"Username: {st.session_state.username}")
+        st.write(f"User Role: {st.session_state.user_role}")
+        st.write(f"User ID: {st.session_state.get('user_id', 'N/A')}")
+        st.write(f"Email: {st.session_state.get('user_email', 'N/A')}")
+###########################################################################################
     # ✅ Start with basic navigation options
     nav_options = ["Reports", "Create Report", "Profile", "About", "Contact"]
 
@@ -87,6 +98,7 @@ if st.session_state.logged_in:
         nav_options.append("User Management")
     if "system_settings" in permissions:
         nav_options.append("Admin Settings")
+        nav_options.append("Audit Dashboard")
 
 
     # ✅ Extended navigation menu
@@ -128,4 +140,8 @@ if st.session_state.logged_in:
     elif page == "Admin Settings":
         # ✅ Replace placeholder with actual system monitoring
         admin.system_monitoring(api)
+    elif page == "Audit Dashboard":
+        from audit_dashboard import audit_dashboard
+
+        audit_dashboard(api)
 

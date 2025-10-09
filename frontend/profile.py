@@ -1,6 +1,6 @@
 import streamlit as st
-from api_client import APIClient
-import verification  # ✅ Add import
+from services.api_client import APIClient
+from services import verification  # ✅ Add import
 
 
 def user_profile(api: APIClient):

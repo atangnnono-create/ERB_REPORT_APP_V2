@@ -1,18 +1,15 @@
 import streamlit as st
-import requests
-import openai
 import json
 from io import BytesIO
-import comps
-from utils import (
+from frontend.utilities.comps import (engineer_competencies,technician_competencies,technologist_competencies)
+from frontend.services import ai_service
+from frontend.utilities.utils import (
     render_progress_dashboard,
     export_to_docx,
-    get_full_report_feedback,
     has_responses,
     sort_keys,
-    get_gpt_feedback,
 )
-from api_client import APIClient
+from frontend.services.api_client import APIClient
 
 api = APIClient()
 
@@ -96,11 +93,11 @@ def create_report_ui():
     st.session_state.selected_role = selected_role
 
     if selected_role == "Engineer":
-        competency_sections = comps.engineer_competencies
+        competency_sections = engineer_competencies
     elif selected_role == "Engineering Technologist":
-        competency_sections = comps.technologist_competencies
+        competency_sections = technologist_competencies
     else:
-        competency_sections = comps.technician_competencies
+        competency_sections = technician_competencies
 
     if selected_role not in st.session_state.responses:
         st.session_state.responses[selected_role] = {}
@@ -295,7 +292,7 @@ def create_report_ui():
                 st.warning("Please enter a response first.")
             else:
                 with st.spinner("Generating AI suggestions..."):
-                    suggestion = get_gpt_feedback(user_input, current_key, section, selected_role)
+                    suggestion = ai_service.get_gpt_feedback(user_input, current_key, section, selected_role)
                     st.session_state.suggestion = suggestion
 
         # ---------------------- AI Suggestions ---------------------- #
@@ -326,7 +323,7 @@ def create_report_ui():
                 st.warning("No responses found.")
             else:
                 with st.spinner("Analyzing full report with GPT..."):
-                    full_feedback = get_full_report_feedback(
+                    full_feedback = ai_service.get_full_report_feedback(
                             st.session_state.responses[selected_role], competency_sections, selected_role)
                     st.session_state.full_feedback = full_feedback
 

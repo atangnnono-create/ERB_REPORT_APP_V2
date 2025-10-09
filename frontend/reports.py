@@ -1,7 +1,7 @@
 import streamlit as st
 import requests
 import json
-from api_client import APIClient
+from frontend.services.api_client import APIClient
 
 API_BASE_URL = "http://127.0.0.1:8000"
 
@@ -10,7 +10,7 @@ def fetch_reports(token: str):
     """Fetch all reports for the currently logged-in user using Bearer token."""
     headers = {"Authorization": f"Bearer {token}"}
     try:
-        resp = requests.get(f"{API_BASE_URL}/reports/", headers=headers)
+        resp = requests.get(f"{API_BASE_URL}/api/v1/reports/", headers=headers)
         if resp.status_code == 200:
             return resp.json()
         else:
@@ -25,7 +25,7 @@ def delete_report(report_id: int, token: str):
     """Delete a report by ID using Bearer token."""
     headers = {"Authorization": f"Bearer {token}"}
     try:
-        resp = requests.delete(f"{API_BASE_URL}/reports/{report_id}", headers=headers)
+        resp = requests.delete(f"{API_BASE_URL}/api/v1/reports/{report_id}", headers=headers)
         if resp.status_code == 200:
             st.success("🗑️ Report deleted successfully!")
             st.rerun()
