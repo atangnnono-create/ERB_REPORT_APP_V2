@@ -1,21 +1,44 @@
+#pandas
+#gspread
+#google-auth
+#google-auth-oauthlib
+#fastapi==0.104.1
+#uvicorn==0.24.0
+#python-multipart==0.0.6
+#passlib[bcrypt]==1.7.4
+#bcrypt==4.0.1
+#python-jose[cryptography]==3.3.0
+#python-dotenv==1.0.0
+#sqlalchemy==2.0.34
+#pydantic[email]
+
+#fastapi==0.105.0
+#pydantic==2.3.0
+#sqlalchemy==2.0.18
+#uvicorn[standard]==0.23.2
+
+
+# Core backend
+fastapi==0.105.0
+pydantic==2.3.0
+uvicorn[standard]==0.23.2
+sqlalchemy==2.0.18
+
+# Authentication & security
+passlib[bcrypt]==1.7.4
+bcrypt==3.2.2
+python-jose==3.3.0
+cryptography==41.0.3
+python-multipart==0.0.6
+
+# Google API
 pandas
 gspread
 google-auth
 google-auth-oauthlib
-#fastapi==0.104.1
-#uvicorn==0.24.0
-python-multipart==0.0.6
-passlib[bcrypt]==1.7.4
-bcrypt==4.0.1
-python-jose[cryptography]==3.3.0
-python-dotenv==1.0.0
-#sqlalchemy==2.0.34
-#pydantic[email]
 
-fastapi==0.105.0
-pydantic==2.3.0
-sqlalchemy==2.0.18
-uvicorn[standard]==0.23.2
+# Environment variables
+python-dotenv==1.0.0
 
 
 
