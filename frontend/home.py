@@ -1,9 +1,11 @@
 import os
 import streamlit as st
+from services.enhanced_api_client import EnhancedAPIClient
 from services.api_client import APIClient
-import profile, about, contact, create_report,auth, reports
+import profile, about, contact, create_report,auth, reports, enhanced_reports
 from components.admin import admin
 from services import verification
+from enhanced_admin_dashboard import enhanced_admin_dashboard
 
 st.set_page_config(page_title="🏭 Engineering Report Deck", layout="centered")
 # ================== APP BANNER ==================
@@ -47,7 +49,9 @@ API_BASE_URL = os.environ.get("API_BASE_URL", "http://127.0.0.1:8000")
 
 # ----------------- Session Init ----------------- #
 if "api" not in st.session_state:
-    st.session_state.api = APIClient()
+    #st.session_state.api = APIClient()
+    st.session_state.api = EnhancedAPIClient()
+
 
 api = st.session_state.api
 
@@ -117,7 +121,8 @@ if st.session_state.logged_in:
 
     # ✅ Page routing
     if page == "Reports":
-        reports.reports_ui(api)
+        #reports.reports_ui(api)
+        enhanced_reports.enhanced_reports_ui(api)
     elif page == "Create Report":
         # Check if user is verified before allowing report creation
         if not verification.check_verification_status(api):
@@ -137,6 +142,7 @@ if st.session_state.logged_in:
         profile.profile_page(api)
     elif page == "User Management":
         admin.admin_dashboard(api)  # ✅ Use the actual admin dashboard
+        #enhanced_admin_dashboard(api)
     elif page == "Admin Settings":
         # ✅ Replace placeholder with actual system monitoring
         admin.system_monitoring(api)

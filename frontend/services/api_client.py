@@ -4,10 +4,10 @@ from requests.adapters import HTTPAdapter
 import asyncio
 from urllib3 import Retry
 
-
-class EnhancedAPIClient:
-    def __init__(self, base_url: str):
+class APIClient:
+    def __init__(self, base_url: str= "http://127.0.0.1:8000"):
         self.base_url = base_url
+        self.token: str | None = None
         self.session = requests.Session()
         self.retry_strategy = Retry(
             total=3,
@@ -26,12 +26,6 @@ class EnhancedAPIClient:
         except asyncio.TimeoutError:
             return False, {"detail": "Request timeout"}
 
-
-class APIClient:
-    def __init__(self, base_url: str = "http://127.0.0.1:8000"):
-        self.base_url = base_url
-        self.token: str | None = None
-        self.session = requests.Session()
 
     def _handle_response(self, response: requests.Response) -> Tuple[bool, Any]:
         """Standardized response handler"""

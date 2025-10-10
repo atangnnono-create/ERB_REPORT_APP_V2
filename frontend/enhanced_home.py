@@ -1,0 +1,320 @@
+import os
+import streamlit as st
+from services.enhanced_api_client import EnhancedAPIClient
+import profile, about, contact, create_report, auth, reports
+from components.admin import admin
+from services import verification
+from utilities.error_handling import ErrorHandler, LoadingState, display_network_status
+
+# Initialize enhanced API client
+if "api" not in st.session_state:
+    st.session_state.api = EnhancedAPIClient()
+
+api = st.session_state.api
+
+
+def get_user_permissions(role: str) -> set:
+    """Enhanced permission system"""
+    permissions = {
+        "admin": {"manage_users", "view_all_reports", "system_settings", "audit_access", "export_data"},
+        "reviewer": {"review_reports", "view_all_reports", "export_reports"},
+        "engineer": {"create_reports", "view_own_reports", "export_reports", "ai_feedback"},
+        "technologist": {"create_reports", "view_own_reports", "export_reports", "ai_feedback"},
+        "technician": {"create_reports", "view_own_reports", "export_reports", "ai_feedback"},
+        "candidate": {"view_own_reports", "create_reports"}
+    }
+    return permissions.get(role, set())
+
+
+def initialize_session_state():
+    """Initialize all session state variables"""
+    defaults = {
+        "logged_in": False,
+        "token": None,
+        "username": "",
+        "user_role": "candidate",
+        "user_id": None,
+        "user_email": "",
+        "full_name": "",
+        "is_verified": False,
+        "is_active": True,
+        "debug_mode": False,
+        "last_activity": None
+    }
+
+    for key, value in defaults.items():
+        if key not in st.session_state:
+            st.session_state[key] = value
+
+
+def show_quick_actions(permissions):
+    """Display quick action buttons based on permissions"""
+    st.sidebar.markdown("---")
+    st.sidebar.subheader("🚀 Quick Actions")
+
+    if "create_reports" in permissions:
+        if st.sidebar.button("📝 New Report", use_container_width=True):
+            st.session_state.current_page = "Create Report"
+            st.rerun()
+
+    if "view_own_reports" in permissions:
+        if st.sidebar.button("📊 My Reports", use_container_width=True):
+            st.session_state.current_page = "Reports"
+            st.rerun()
+
+    if "review_reports" in permissions:
+        if st.sidebar.button("👀 Review Queue", use_container_width=True):
+            st.session_state.current_page = "Review Dashboard"
+            st.rerun()
+
+
+def show_user_profile_sidebar():
+    """Enhanced user profile in sidebar"""
+    st.sidebar.markdown("---")
+    st.sidebar.subheader("👤 User Profile")
+
+    # User info with status
+    col1, col2 = st.sidebar.columns([1, 3])
+    with col1:
+        st.write("🎯" if st.session_state.is_verified else "⏳")
+    with col2:
+        st.write(f"**{st.session_state.username}**")
+        st.caption(f"{st.session_state.user_role.title()}")
+
+    # Verification status
+    if st.session_state.is_verified:
+        st.sidebar.success("✅ Email Verified")
+    else:
+        st.sidebar.warning("📧 Verify Email")
+
+    # Quick stats
+    with LoadingState("Loading stats...", use_container=False):
+        success, user_data = api.get_current_user()
+        if success:
+            st.sidebar.metric("Reports", len(user_data.get('reports', [])))
+
+
+def handle_authentication():
+    """Handle login/registration flow"""
+    login_tab, register_tab = st.tabs(["🔑 Login", "📝 Register"])
+
+    with register_tab:
+        auth.register_ui(api)
+
+    with login_tab:
+        auth.login_ui(api)
+
+    # Add password reset option
+    st.markdown("---")
+    with st.expander("🔒 Forgot Password?"):
+        st.info("Please contact system administrator for password reset")
+        email = st.text_input("Enter your email")
+        if st.button("Request Password Reset"):
+            st.warning("Password reset functionality coming soon")
+
+
+def main_app():
+    """Main application after authentication"""
+    user_role = st.session_state.get("user_role", "candidate")
+    permissions = get_user_permissions(user_role)
+
+    # Enhanced navigation
+    st.sidebar.title("🧭 Navigation")
+
+    # Main pages for all users
+    main_pages = ["📊 Dashboard", "📝 Create Report", "📋 My Reports", "👤 Profile"]
+
+    # Role-specific pages
+    if "review_reports" in permissions:
+        main_pages.append("👀 Review Dashboard")
+    if "view_all_reports" in permissions:
+        main_pages.append("📈 All Reports")
+    if "manage_users" in permissions:
+        main_pages.append("👥 User Management")
+    if "system_settings" in permissions:
+        main_pages.extend(["⚙️ Admin Settings", "📊 Audit Dashboard"])
+
+    # Always available
+    main_pages.extend(["ℹ️ About", "📞 Contact"])
+
+    # Page selection
+    selected_page = st.sidebar.radio("Go to", main_pages, index=0)
+
+    # Show quick actions
+    show_quick_actions(permissions)
+
+    # User profile section
+    show_user_profile_sidebar()
+
+    # Network status
+    with st.sidebar.expander("🔧 System Status"):
+        display_network_status(api)
+
+    # Logout button
+    st.sidebar.markdown("---")
+    if st.sidebar.button("🚪 Logout", use_container_width=True):
+        api.logout()
+        for key in list(st.session_state.keys()):
+            del st.session_state[key]
+        st.rerun()
+
+    # Page routing
+    page_map = {
+        "📊 Dashboard": show_dashboard,
+        "📝 Create Report": create_report_page,
+        "📋 My Reports": reports_page,
+        "👤 Profile": profile_page,
+        "👀 Review Dashboard": review_dashboard,
+        "📈 All Reports": all_reports_page,
+        "👥 User Management": user_management_page,
+        "⚙️ Admin Settings": admin_settings_page,
+        "📊 Audit Dashboard": audit_dashboard_page,
+        "ℹ️ About": about_page,
+        "📞 Contact": contact_page
+    }
+
+    # Execute selected page
+    page_function = page_map.get(selected_page, show_dashboard)
+    page_function()
+
+
+def show_dashboard():
+    """Enhanced dashboard with overview"""
+    st.title("📊 Dashboard")
+
+    col1, col2, col3 = st.columns(3)
+
+    with col1:
+        with st.container(border=True):
+            st.subheader("📝 Reports")
+            success, reports_data = api.fetch_reports()
+            if success:
+                st.metric("Total Reports", len(reports_data))
+                draft_count = sum(1 for r in reports_data if r.get('status') == 'draft')
+                st.metric("Drafts", draft_count)
+            else:
+                st.write("No reports")
+
+    with col2:
+        with st.container(border=True):
+            st.subheader("🎯 Progress")
+            # Add progress visualization here
+            st.info("Progress tracking coming soon")
+
+    with col3:
+        with st.container(border=True):
+            st.subheader("🔔 Notifications")
+            if not st.session_state.is_verified:
+                st.warning("Verify your email to access all features")
+            else:
+                st.success("All systems operational")
+
+
+def create_report_page():
+    """Enhanced create report with verification check"""
+    if not verification.check_verification_status(api):
+        verification.verification_required_message()
+    else:
+        create_report.main_ui()
+
+
+def reports_page():
+    """Reports page with error handling"""
+    try:
+        reports.reports_ui(api)
+    except Exception as e:
+        ErrorHandler.show_error("Failed to load reports", str(e))
+
+
+def profile_page():
+    """Profile page"""
+    profile.profile_page(api)
+
+
+def review_dashboard():
+    """Review dashboard for reviewers"""
+    st.title("👀 Review Dashboard")
+    # Implementation would go here
+    st.info("Review dashboard implementation in progress")
+
+
+def all_reports_page():
+    """All reports view for admins/reviewers"""
+    admin.admin_reports_view(api)
+
+
+def user_management_page():
+    """User management for admins"""
+    admin.admin_dashboard(api)
+
+
+def admin_settings_page():
+    """Admin settings"""
+    admin.system_monitoring(api)
+
+
+def audit_dashboard_page():
+    """Audit dashboard"""
+    from audit_dashboard import audit_dashboard
+    audit_dashboard(api)
+
+
+def about_page():
+    """About page"""
+    about.show()
+
+
+def contact_page():
+    """Contact page"""
+    contact.show()
+
+
+def main():
+    """Main application entry point"""
+    st.set_page_config(
+        page_title="🏭 Engineering Report Deck",
+        layout="centered",
+        initial_sidebar_state="expanded"
+    )
+
+    # Custom CSS for better styling
+    st.markdown("""
+        <style>
+        .main-header {
+            font-size: 2.5rem;
+            color: #1f77b4;
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+        .metric-card {
+            background-color: #f0f2f6;
+            padding: 1rem;
+            border-radius: 10px;
+            border-left: 4px solid #1f77b4;
+        }
+        </style>
+    """, unsafe_allow_html=True)
+
+    # App header
+    st.markdown("""
+        <div style="background: linear-gradient(90deg, #2c3e50, #3498db); padding: 2rem; border-radius: 10px; text-align: center; color: white; margin-bottom: 2rem;">
+            <h1 style="margin:0; font-size: 2.5rem;">🏭 Engineering Report Deck</h1>
+            <p style="margin:0; font-size: 1.2rem;">AI Revolution Driving Engineering Evolution ✨</p>
+            <p style="margin-top: 0.5rem; font-size: 0.9rem; opacity: 0.9;">
+                <b>Version:</b> v2.0 — Enhanced Edition
+            </p>
+        </div>
+    """, unsafe_allow_html=True)
+
+    # Initialize session state
+    initialize_session_state()
+
+    # Authentication check
+    if not st.session_state.logged_in:
+        handle_authentication()
+    else:
+        main_app()
+
+
+if __name__ == "__main__":
+    main()

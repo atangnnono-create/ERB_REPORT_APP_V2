@@ -1,227 +1,18 @@
-from typing import Tuple
 import streamlit as st
 import json
 from io import BytesIO
-from datetime import datetime
-from frontend.utilities.comps import (engineer_competencies, technician_competencies, technologist_competencies)
-from frontend.services import enhanced_ai_service
-from utilities.utils import (export_to_docx, has_responses, sort_keys, enhanced_render_progress_dashboard)
+from frontend.utilities.comps import (engineer_competencies,technician_competencies,technologist_competencies)
+from frontend.services import ai_service
+from frontend.utilities.utils import (
+    render_progress_dashboard,
+    export_to_docx,
+    has_responses,
+    sort_keys,
+)
 from frontend.services.enhanced_api_client import EnhancedAPIClient
-from utilities.error_handling import ErrorHandler, LoadingState, with_loading
 
 api = EnhancedAPIClient()
 
-
-# ========== AUTO-SAVE FUNCTIONS ==========
-
-def setup_auto_save():
-    """Initialize auto-save functionality"""
-    if "auto_save_interval" not in st.session_state:
-        st.session_state.auto_save_interval = 30  # seconds
-    if "last_save_time" not in st.session_state:
-        st.session_state.last_save_time = datetime.now()
-    if "auto_save_enabled" not in st.session_state:
-        st.session_state.auto_save_enabled = True
-
-
-def auto_save_check():
-    """Check if it's time to auto-save"""
-    if not st.session_state.auto_save_enabled:
-        return
-
-    current_time = datetime.now()
-    time_diff = (current_time - st.session_state.last_save_time).total_seconds()
-
-    if time_diff >= st.session_state.auto_save_interval:
-        save_current_progress()
-        st.session_state.last_save_time = current_time
-        # Show subtle save indicator
-        st.toast("💾 Progress auto-saved", icon="✅")
-
-
-def save_current_progress():
-    """Save current report progress"""
-    try:
-        if "responses" in st.session_state and "selected_role" in st.session_state:
-            progress_data = {
-                "role": st.session_state.selected_role,
-                "responses": st.session_state.responses.get(st.session_state.selected_role, {}),
-                "current_section": st.session_state.get("current_section", 0),
-                "last_modified": datetime.now().isoformat(),
-                "version": "2.0"
-            }
-
-            # Save to session state for persistence
-            st.session_state["auto_save_data"] = progress_data
-
-            # Optional: Save to local storage
-            if st.session_state.get("enable_local_backup", True):
-                try:
-                    with open("auto_save_backup.json", "w") as f:
-                        json.dump(progress_data, f, indent=2)
-                except Exception:
-                    pass  # Silent fail for local backup
-
-    except Exception as e:
-        print(f"Auto-save failed: {e}")
-
-
-def load_auto_saved_progress():
-    """Load auto-saved progress if available"""
-    try:
-        # Check session state first
-        if "auto_save_data" in st.session_state:
-            data = st.session_state.auto_save_data
-            if data.get("version") == "2.0":
-                return data
-
-        # Check local backup
-        try:
-            with open("auto_save_backup.json", "r") as f:
-                data = json.load(f)
-                if data.get("version") == "2.0":
-                    return data
-        except FileNotFoundError:
-            pass
-
-    except Exception as e:
-        print(f"Failed to load auto-save: {e}")
-
-    return None
-
-
-def validate_report_data(report_data: dict) -> Tuple[bool, str]:
-    """Validate report data before submission"""
-    if not report_data.get('title') or not report_data['title'].strip():
-        return False, "Report title is required"
-
-    if not report_data.get('content') or len(report_data['content'].strip()) < 50:
-        return False, "Report content must be at least 50 characters"
-
-    competencies = report_data.get('competencies', [])
-    if not competencies:
-        return False, "At least one competency must be completed"
-
-    # Check for minimum word count in competencies
-    total_words = 0
-    for comp in competencies:
-        response = comp.get('user_response', '')
-        total_words += len(response.split())
-
-    if total_words < 100:
-        return False, "Total report content must be at least 100 words"
-
-    return True, "Validation passed"
-
-
-def show_auto_save_controls():
-    """Display auto-save controls in sidebar"""
-    st.sidebar.markdown("---")
-    st.sidebar.subheader("💾 Auto-Save")
-
-    # Auto-save toggle
-    auto_save = st.sidebar.toggle("Enable Auto-Save",
-                                  value=st.session_state.get("auto_save_enabled", True),
-                                  key="auto_save_toggle")
-
-    st.session_state.auto_save_enabled = auto_save
-
-    # Save interval
-    interval = st.sidebar.slider("Save Interval (seconds)",
-                                 min_value=10, max_value=120,
-                                 value=st.session_state.get("auto_save_interval", 30),
-                                 key="auto_save_interval_slider")
-
-    st.session_state.auto_save_interval = interval
-
-    # Manual save button
-    if st.sidebar.button("💾 Save Now", use_container_width=True):
-        save_current_progress()
-        st.sidebar.success("Progress saved!")
-
-    # Load previous progress
-    if st.sidebar.button("🔄 Load Last Save", use_container_width=True):
-        saved_data = load_auto_saved_progress()
-        if saved_data:
-            st.session_state.selected_role = saved_data.get("role", "Engineer")
-            st.session_state.responses[saved_data["role"]] = saved_data.get("responses", {})
-            st.session_state.current_section = saved_data.get("current_section", 0)
-            st.sidebar.success("Progress restored!")
-            st.rerun()
-        else:
-            st.sidebar.warning("No saved progress found")
-
-
-
-def enhanced_submit_report(selected_role: str, competency_sections: dict):
-    """Enhanced report submission with validation"""
-    if not has_responses(st.session_state.responses[selected_role]):
-        ErrorHandler.show_error("No responses to submit")
-        return
-
-    # Validate report data
-    report_status = st.session_state.responses[selected_role].get('_status', 'draft')
-    sorted_responses = dict(
-        sorted(st.session_state.responses[selected_role].items(), key=lambda x: x[0]))
-
-    competencies = []
-    for key, v in sorted_responses.items():
-        if key != '_status':
-            competencies.append({
-                "competency_key": key,
-                "competency_title": v["title"],
-                "user_response": v["response"],
-            })
-
-    merged_content = "\n\n".join(
-        [f"{c['competency_key']} - {c['competency_title']}\n{c['user_response']}" for c in competencies]
-    )
-
-    payload = {
-        "title": f"{selected_role} Report - {datetime.now().strftime('%Y-%m-%d')}",
-        "content": merged_content,
-        "competencies": competencies,
-        "status": report_status
-    }
-
-    # Validate before submission
-    is_valid, validation_msg = validate_report_data(payload)
-    if not is_valid:
-        ErrorHandler.show_error(validation_msg)
-        return
-
-    # Submit with loading state
-    with LoadingState("Submitting report..."):
-        success, result = api.create_report(payload)
-
-        if success and "id" in result:
-            ErrorHandler.show_success(f"Report submitted successfully! (ID: {result['id']})")
-
-            # Clear auto-save data on successful submission
-            if "auto_save_data" in st.session_state:
-                del st.session_state.auto_save_data
-
-            # Clear form if not draft
-            if report_status != 'draft':
-                st.session_state.responses[selected_role] = {}
-                st.session_state.current_section = 0
-        else:
-            ErrorHandler.show_error(f"Failed to submit report: {result.get('detail', 'Unknown error')}")
-
-
-# ========== CLEAR AI SUGGESTIONS FUNCTIONS ==========
-
-def clear_competency_suggestions():
-    if "suggestion" in st.session_state:
-        st.session_state.suggestion = ""
-
-
-def clear_full_report_suggestions():
-    if "full_feedback" in st.session_state:
-        st.session_state.full_feedback = ""
-
-
-# ========== MAIN UI FUNCTION ==========
 
 def create_report_ui():
     st.set_page_config(page_title="📝 Create Report", layout="centered")
@@ -233,8 +24,14 @@ def create_report_ui():
     else:
         api.set_token(st.session_state.token)
 
-    # ---------- Initialize Auto-Save ----------
-    setup_auto_save()
+    ######## CLEAR AI SUGGESTIONS FUNCTIONS #########
+    def clear_competency_suggestions():
+        if "suggestion" in st.session_state:
+            st.session_state.suggestion = ""
+
+    def clear_full_report_suggestions():
+        if "full_feedback" in st.session_state:
+            st.session_state.full_feedback = ""
 
     # ---------- Session Init ----------
     if "responses" not in st.session_state:
@@ -276,7 +73,7 @@ def create_report_ui():
                 # ✅ Save raw data for later normalization
                 st.session_state.pending_responses = loaded_responses
 
-                # Save filename so it doesn't re-load infinitely
+                # Save filename so it doesn’t re-load infinitely
                 st.session_state.last_loaded_file = uploaded_file.name
 
                 st.success(f"Progress preloaded for {st.session_state.selected_role} from {uploaded_file.name}")
@@ -284,28 +81,6 @@ def create_report_ui():
 
             except Exception as e:
                 st.error(f"Error loading progress: {str(e)}")
-
-    # ---------- Auto-Save Controls ----------
-    show_auto_save_controls()
-
-    # ---------- Check for Auto-Saved Progress ----------
-    if "auto_save_loaded" not in st.session_state:
-        saved_data = load_auto_saved_progress()
-        if saved_data and st.session_state.get("selected_role") == saved_data.get("role"):
-            # Offer to restore saved progress
-            with st.container():
-                st.warning("💾 Auto-saved progress found from your last session")
-                col1, col2 = st.columns(2)
-                with col1:
-                    if st.button("🔄 Restore Progress"):
-                        st.session_state.responses[saved_data["role"]] = saved_data.get("responses", {})
-                        st.session_state.current_section = saved_data.get("current_section", 0)
-                        st.session_state.auto_save_loaded = True
-                        st.rerun()
-                with col2:
-                    if st.button("🗑️ Start Fresh"):
-                        st.session_state.auto_save_loaded = True
-                        st.rerun()
 
     # ---------- Role Selector ----------
     selected_role = st.radio(
@@ -326,12 +101,6 @@ def create_report_ui():
 
     if selected_role not in st.session_state.responses:
         st.session_state.responses[selected_role] = {}
-
-    # ---------- Enhanced Progress Dashboard ----------
-    enhanced_render_progress_dashboard(competency_sections, st.session_state.selected_role)
-
-    # ---------- Auto-Save Check ----------
-    auto_save_check()
 
     # ---------- NORMALIZE AFTER competency_sections EXISTS ----------
     if "pending_responses" in st.session_state:
@@ -384,7 +153,10 @@ def create_report_ui():
     st.subheader(f"Competency {current_index + 1} of {total_sections}: {section['title']}")
     st.info(section["instructions"])
 
-    # ---------- Status Selection ----------
+    ###############################################################################################
+
+
+    # Add status selection to the sidebar or main form
     with st.sidebar:
         st.subheader("📋 Report Status")
 
@@ -408,7 +180,9 @@ def create_report_ui():
         if selected_status == "submitted":
             st.info("🔔 Your report will be submitted for review and cannot be edited further until reviewed.")
 
-    # ---------- Text Area for Response ----------
+    #############################################################################################################
+
+
     user_input = st.text_area(
         "✍️ Your response:",
         value=st.session_state.responses[selected_role].get(current_key, {}).get("response", ""),
@@ -438,13 +212,61 @@ def create_report_ui():
 
     st.markdown("---")
 
-    # ---------- Action Buttons ----------
+    with st.sidebar:
+        render_progress_dashboard(competency_sections, selected_role)
+
     col1, col2 = st.columns(2)
     with col1:
-        # Enhanced submit button
-        if st.button("🚀 Submit Report to Backend", key="enhanced_submit"):
-            enhanced_submit_report(selected_role, competency_sections)
+        # ---------- Submit a List of Competencies ----------
+        if st.button("🚀 Submit Full Report to Backend"):
+            if not has_responses(st.session_state.responses[selected_role]):
+                st.warning("No responses to submit.")
+            else:
+                # Get the selected status
+                report_status = st.session_state.responses[selected_role].get('_status', 'draft')
+                # Sort keys
+                sorted_responses = dict(
+                    sorted(st.session_state.responses[selected_role].items(), key=lambda x: x[0])
+                )
 
+                # Build payload with competencies
+                competencies = []
+                for key, v in sorted_responses.items():
+                    if key != '_status':  # Exclude status from competencies
+                        competencies.append({
+                            "competency_key": key,
+                            "competency_title": v["title"],
+                            "user_response": v["response"],
+                        })
+
+                merged_content = "\n\n".join(
+                    [f"{c['competency_key']} - {c['competency_title']}\n{c['user_response']}" for c in competencies]
+                )
+
+                payload = {
+                    "title": f"{selected_role} Report",
+                    "content": merged_content,
+                    "competencies": competencies,
+                    "status": report_status  # ✅ Include status in payload
+                }
+
+                success, result = api.create_report(payload)
+                if success and "id" in result:
+                    st.success(f"Report submitted! ✅ (ID: {result['id']})")
+
+                    # If submitted for review, show additional info
+                    if report_status == "submitted":
+                        st.info("📨 Your report has been submitted for review. You will be notified when it's reviewed.")
+
+                    # Clear the form if submitted
+                    if report_status != "draft":
+                        st.session_state.responses[selected_role] = {}
+                        st.session_state.current_section = 0
+                else:
+                    msg = result.get("detail") or str(result)
+                    st.error(f"Failed to submit report: {msg}")
+
+    # ---------- Export / Load ----------
     with col2:
         if st.button("📄 Export Report to Word"):
             if not has_responses(st.session_state.responses[selected_role]):
@@ -470,7 +292,7 @@ def create_report_ui():
                 st.warning("Please enter a response first.")
             else:
                 with st.spinner("Generating AI suggestions..."):
-                    suggestion = enhanced_ai_service.get_gpt_feedback(user_input, current_key, section, selected_role)
+                    suggestion = ai_service.get_gpt_feedback(user_input, current_key, section, selected_role)
                     st.session_state.suggestion = suggestion
 
         # ---------------------- AI Suggestions ---------------------- #
@@ -501,9 +323,10 @@ def create_report_ui():
                 st.warning("No responses found.")
             else:
                 with st.spinner("Analyzing full report with GPT..."):
-                    full_feedback = enhanced_ai_service.get_full_report_feedback(
+                    full_feedback = ai_service.get_full_report_feedback(
                             st.session_state.responses[selected_role], competency_sections, selected_role)
                     st.session_state.full_feedback = full_feedback
+
 
         # ---------------------- AI Suggestions ---------------------- #
         if st.session_state.full_feedback:
@@ -526,10 +349,5 @@ def create_report_ui():
                     unsafe_allow_html=True
                 )
 
-
 def main_ui():
     create_report_ui()
-
-
-if __name__ == "__main__":
-    main_ui()

@@ -1,10 +1,10 @@
 import streamlit as st
-from services.api_client import APIClient
+from frontend.services.enhanced_api_client import EnhancedAPIClient
 import pandas as pd
 import json
 
 
-def admin_dashboard(api: APIClient):
+def admin_dashboard(api: EnhancedAPIClient):
     st.title("👥 Admin Dashboard")
 
     # Dashboard overview
@@ -23,7 +23,7 @@ def admin_dashboard(api: APIClient):
         system_monitoring(api)
 
 
-def show_dashboard_overview(api: APIClient):
+def show_dashboard_overview(api: EnhancedAPIClient):
     """Show admin dashboard overview with metrics"""
     col1, col2, col3, col4 = st.columns(4)
 
@@ -49,7 +49,7 @@ def show_dashboard_overview(api: APIClient):
         st.metric("Pending Review", active_reports)
 
 
-def enhanced_manage_users(api: APIClient):
+def enhanced_manage_users(api: EnhancedAPIClient):
     st.subheader("👤 User Management")
 
     # Search and filters
@@ -150,7 +150,7 @@ def enhanced_manage_users(api: APIClient):
                                 st.error(f"Failed: {result.get('detail', 'Unknown error')}")
 
 
-def enhanced_view_all_reports(api: APIClient):
+def enhanced_view_all_reports(api: EnhancedAPIClient):
     st.subheader("📊 All Reports Management")
 
     # Report filters
@@ -278,7 +278,7 @@ def enhanced_view_all_reports(api: APIClient):
                 )
 
 
-def system_monitoring(api: APIClient):
+def system_monitoring(api: EnhancedAPIClient):
     st.subheader("⚙️ System Monitoring")
 
     # System information
@@ -333,7 +333,7 @@ def system_monitoring(api: APIClient):
             st.success("System check completed - All services operational")
 
 
-def admin_reports_view(api: APIClient):
+def admin_reports_view(api: EnhancedAPIClient):
     """Simple all reports view for the navigation"""
     st.title("📊 All Reports")
     enhanced_view_all_reports(api)

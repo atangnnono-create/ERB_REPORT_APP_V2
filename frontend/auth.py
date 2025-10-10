@@ -1,8 +1,8 @@
 import streamlit as st
-from services.api_client import APIClient
+from services.enhanced_api_client import EnhancedAPIClient
 
 
-def login_ui(api: APIClient):
+def login_ui(api: EnhancedAPIClient):
     st.title("🔑 Login")
 
     username = st.text_input("Username")
@@ -44,7 +44,7 @@ def login_ui(api: APIClient):
             else:
                 st.error("❌ Login failed: Invalid username or password")
 
-def register_ui(api: APIClient):
+def register_ui(api: EnhancedAPIClient):
     st.header("📝 Register")
 
     with st.form("registration_form"):

@@ -60,6 +60,7 @@ app.include_router(health.router, prefix="/api/v1", tags=["health"])
 app.include_router(password_reset.router, prefix="/api/v1", tags=["Password Reset"])
 
 
+
 @app.on_event("startup")
 async def startup_event():
     """Run on application startup"""

@@ -192,3 +192,60 @@ def sort_keys(keys):
 
 
 
+def enhanced_render_progress_dashboard(sections: dict, profession: str):
+    """Enhanced progress dashboard with more metrics"""
+    st.sidebar.markdown(
+        f"""
+        <h2 style="background: linear-gradient(90deg, #1e90ff, #00bfff);
+                   padding: 10px; border-radius: 8px;
+                   color: white; text-align: center; font-family:Arial;">
+            📊 {profession}'s Progress
+        </h2>
+        """,
+        unsafe_allow_html=True
+    )
+
+    role_responses = st.session_state.responses.get(profession, {})
+
+    # Overall progress
+    total_sections = len(sections)
+    completed_sections = sum(1 for sec_id in sections if role_responses.get(sec_id, {}).get("response", "").strip())
+    progress_percent = (completed_sections / total_sections) * 100 if total_sections else 0
+
+    st.sidebar.metric("Overall Progress", f"{progress_percent:.1f}%")
+    st.sidebar.progress(progress_percent / 100)
+
+    # Quick stats
+    total_words = sum(len(role_responses.get(sec_id, {}).get("response", "").split())
+                      for sec_id in sections)
+    st.sidebar.metric("Total Words", total_words)
+
+    # Section-by-section progress
+    for sec_id, section in sections.items():
+        user_entry = role_responses.get(sec_id, {})
+        user_response = user_entry.get("response", "")
+        word_count = len(user_response.split())
+        word_limit = section.get("word_limit", 500)
+        completion = min(word_count / word_limit, 1.0)
+
+        # Color code based on completion
+        if completion >= 0.8:
+            color = "#2ecc71"  # Green
+            status = "✅"
+        elif completion > 0:
+            color = "#3498db"  # Blue
+            status = "📝"
+        else:
+            color = "#e74c3c"  # Red
+            status = "⏳"
+
+        st.sidebar.markdown(
+            f"""
+            <div style="border-left: 4px solid {color}; padding-left: 8px; margin: 5px 0;">
+                <div style="font-size: 14px; font-weight: bold;">{status} {sec_id}</div>
+                <div style="font-size: 12px; color: #666;">{word_count}/{word_limit} words</div>
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
+

@@ -3,10 +3,10 @@ import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 from datetime import datetime, timedelta
-from services.api_client import APIClient
+from services.enhanced_api_client import EnhancedAPIClient
 
 
-def audit_dashboard(api: APIClient):
+def audit_dashboard(api: EnhancedAPIClient):
     st.title("📊 Audit Dashboard")
 
     # Check permissions
@@ -31,7 +31,7 @@ def audit_dashboard(api: APIClient):
         show_system_stats(api)
 
 
-def show_audit_overview(api: APIClient):
+def show_audit_overview(api: EnhancedAPIClient):
     st.subheader("📈 Audit Overview")
 
     # Get audit stats
@@ -83,7 +83,7 @@ def show_audit_overview(api: APIClient):
         st.plotly_chart(fig, use_container_width=True)
 
 
-def show_log_explorer(api: APIClient):
+def show_log_explorer(api: EnhancedAPIClient):
     st.subheader("🔍 Log Explorer")
 
     # Filters
@@ -114,7 +114,7 @@ def show_log_explorer(api: APIClient):
                 st.error("Failed to load audit logs")
 
 
-def show_user_activity(api: APIClient):
+def show_user_activity(api: EnhancedAPIClient):
     st.subheader("👥 User Activity")
 
     # Get all users
@@ -139,7 +139,7 @@ def show_user_activity(api: APIClient):
             st.error("Failed to load user activity")
 
 
-def show_system_stats(api: APIClient):
+def show_system_stats(api: EnhancedAPIClient):
     st.subheader("⚙️ System Statistics")
 
     # Cleanup options
@@ -209,7 +209,7 @@ def display_user_activity(logs):
     display_logs_table(logs[:20])  # Show last 20 activities
 
 
-def get_available_actions(api: APIClient):
+def get_available_actions(api: EnhancedAPIClient):
     """Get available audit actions from API"""
     success, response = api.get_audit_actions()
     if success:
@@ -218,7 +218,7 @@ def get_available_actions(api: APIClient):
 
 
 def main():
-    api = APIClient()
+    api = EnhancedAPIClient()
     if st.session_state.get('token'):
         api.set_token(st.session_state.token)
     audit_dashboard(api)

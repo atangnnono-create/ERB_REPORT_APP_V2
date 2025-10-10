@@ -1,9 +1,9 @@
 import streamlit as st
-from services.api_client import APIClient
+from services.enhanced_api_client import EnhancedAPIClient
 from services import verification  # ✅ Add import
 
 
-def user_profile(api: APIClient):
+def user_profile(api: EnhancedAPIClient):
     st.title("👤 Your Profile")
 
     # Fetch current user data
@@ -61,6 +61,6 @@ def user_profile(api: APIClient):
         verification.verification_ui(api)
 
 
-def profile_page(api: APIClient):
+def profile_page(api: EnhancedAPIClient):
     """Main profile page function"""
     user_profile(api)
