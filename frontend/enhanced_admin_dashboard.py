@@ -5,7 +5,7 @@ import plotly.graph_objects as go
 from datetime import datetime, timedelta
 import numpy as np
 from typing import Dict, List, Any, Optional
-from frontend.services.enhanced_api_client import EnhancedAPIClient
+from services.enhanced_api_client import EnhancedAPIClient
 from utilities.error_handling import ErrorHandler, LoadingState
 import json
 
@@ -893,15 +893,18 @@ class EnhancedAdminDashboard:
             return
 
         log_data = []
+
         for log in logs:
+            user_agent = log.get('user_agent') if log and log.get('user_agent') else ''
+            user_agent = str(user_agent)  # guarantee it's a string
+
             log_data.append({
-                'Timestamp': log.get('created_at', ''),
-                'User': log.get('username', 'System'),
-                'Action': log.get('action', ''),
-                'Resource': f"{log.get('resource_type', '')} #{log.get('resource_id', '')}",
-                'IP Address': log.get('ip_address', ''),
-                'User Agent': log.get('user_agent', '')[:50] + '...' if len(
-                    log.get('user_agent', '')) > 50 else log.get('user_agent', '')
+                'Timestamp': log.get('created_at', '') if log else '',
+                'User': log.get('username', 'System') if log else 'System',
+                'Action': log.get('action', '') if log else '',
+                'Resource': f"{log.get('resource_type', '')} #{log.get('resource_id', '')}" if log else '',
+                'IP Address': log.get('ip_address', '') if log else '',
+                'User Agent': user_agent[:50] + '...' if len(user_agent) > 50 else user_agent
             })
 
         df = pd.DataFrame(log_data)

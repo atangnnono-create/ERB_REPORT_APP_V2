@@ -233,25 +233,30 @@ class AdvancedAIService:
         except Exception as e:
             return f"⚠️ Error generating comprehensive feedback: {str(e)}"
 
-    def generate_competency_template(self, section_code: str, section_data: dict, profession: str) -> str:
-        """Generate a template response for a competency"""
+    def generate_competency_template(self, section_code: str, section_data: dict, profession: str,
+                                     style: str = "Professional", include_examples: bool = True) -> str:
+        """Generate a template response for a competency with customization options"""
         prompt = f"""
-        Generate a high-quality template response for an ERB competency submission.
+        Generate a {style.lower()} template response for an ERB competency submission.
 
         **Competency:** {section_code} - {section_data['title']}
         **Professional Level:** {profession}
+        **Style Preference:** {style}
+        **Include Examples:** {include_examples}
         **Instructions:** {section_data['instructions']}
         **Key Indicators:** {', '.join(section_data.get('indicators', []))}
         **Target Word Count:** {section_data.get('word_limit', 500)}
 
         Create a template that:
-        1. Demonstrates engineering best practices
+        1. Demonstrates engineering best practices in {style.lower()} style
         2. Addresses all competency indicators
-        3. Uses professional engineering language
-        4. Includes placeholders for specific projects/experiences
+        3. Uses professional engineering language appropriate for {profession}
+        4. Includes {'detailed examples and ' if include_examples else ''}placeholders for specific projects/experiences
         5. Shows appropriate technical depth for {profession} level
+        6. Is structured for easy customization
 
         Format as a ready-to-customize template with [BRACKETED_PLACEHOLDERS] for user-specific details.
+        Provide clear section headings and practical guidance.
         """
 
         try:
@@ -259,40 +264,55 @@ class AdvancedAIService:
                 model="gpt-4",
                 messages=[
                     {"role": "system",
-                     "content": "You are an engineering expert creating high-quality ERB competency templates."},
+                     "content": f"You are an engineering expert creating high-quality ERB competency templates in {style.lower()} style."},
                     {"role": "user", "content": prompt},
                 ],
                 temperature=0.7,
                 max_tokens=1500,
             )
 
-            return self._safe_content(response)
+            template = self._safe_content(response)
+            self._store_feedback_history(section_code, f"Generated {style} template")
+            return template
 
         except Exception as e:
             return f"⚠️ Error generating template: {str(e)}"
 
     def analyze_competency_gaps(self, responses: dict, competency_data: dict, profession: str) -> str:
-        """Analyze gaps in competency coverage"""
-        completed_competencies = list(responses.keys())
+        """Enhanced gap analysis with role-specific insights"""
+        completed_competencies = [k for k, v in responses.items() if v.get('response', '').strip()]
         all_competencies = list(competency_data.keys())
         missing_competencies = [c for c in all_competencies if c not in completed_competencies]
 
-        prompt = f"""
-        Analyze competency completion gaps for a {profession} ERB submission.
+        completion_rate = (len(completed_competencies) / len(all_competencies) * 100) if all_competencies else 0
 
-        **Completed Competencies:** {len(completed_competencies)}/{len(all_competencies)}
+        prompt = f"""
+        Analyze competency completion gaps and provide strategic recommendations for a {profession} ERB submission.
+
+        **Completion Status:** {len(completed_competencies)}/{len(all_competencies)} ({completion_rate:.1f}%)
         **Missing Competencies:** {missing_competencies}
 
-        **Competency Framework Overview:**
-        {json.dumps(competency_data, indent=2)}
+        **Completed Competencies:**
+        {chr(10).join(f"- {comp}: {competency_data[comp]['title']}" for comp in completed_competencies)}
 
-        **Provide gap analysis:**
-        1. Critical missing competencies and their importance
-        2. Impact on overall ERB submission strength
-        3. Suggested prioritization for completion
-        4. Interrelationships between completed and missing competencies
+        **Missing Competencies:**
+        {chr(10).join(f"- {comp}: {competency_data[comp]['title']}" for comp in missing_competencies)}
 
-        Focus on practical advice for completing a strong ERB submission.
+        **Provide strategic gap analysis focusing on:**
+        1. **Critical Priority Competencies** - Which missing competencies are most important for {profession} role?
+        2. **Quick Wins** - Which competencies can be completed most efficiently?
+        3. **Interdependencies** - How do completed and missing competencies relate?
+        4. **Role-Specific Strategy** - Optimal completion order for {profession}
+        5. **Risk Assessment** - Impact of current gaps on ERB submission success
+
+        **Format your response with clear, actionable sections:**
+        - Critical Missing Competencies
+        - Recommended Completion Order  
+        - Quick Wins & Low-Hanging Fruit
+        - Strategic Recommendations for {profession}
+        - Estimated Timeline & Effort
+
+        Focus on practical, role-specific advice that helps prioritize effectively.
         """
 
         try:
@@ -300,20 +320,23 @@ class AdvancedAIService:
                 model="gpt-4",
                 messages=[
                     {"role": "system",
-                     "content": "You are an ERB submission strategist analyzing competency gaps and providing completion guidance."},
+                     "content": f"You are an ERB submission strategist specializing in {profession} role requirements. Provide targeted, actionable gap analysis."},
                     {"role": "user", "content": prompt},
                 ],
                 temperature=0.3,
                 max_tokens=2000,
             )
 
-            return self._safe_content(response)
+            analysis = self._safe_content(response)
+            self._store_feedback_history("gap_analysis",
+                                         f"Gap analysis for {profession} - {len(completed_competencies)}/{len(all_competencies)} completed")
+            return analysis
 
         except Exception as e:
             return f"⚠️ Error analyzing gaps: {str(e)}"
 
     def improve_response_quality(self, text: str, section_code: str, section_data: dict, profession: str) -> str:
-        """Provide specific improvements for a response"""
+        """Provide specific improvements for a response with enhanced formatting"""
         prompt = f"""
         Improve this engineering competency response for ERB submission:
 
@@ -321,14 +344,22 @@ class AdvancedAIService:
         **Professional Level:** {profession}
         **Current Response:** {text}
 
-        **Provide an improved version that:**
-        1. Enhances technical depth and specificity
-        2. Strengthens alignment with competency indicators: {', '.join(section_data.get('indicators', []))}
-        3. Uses more professional engineering language
-        4. Includes stronger evidence and examples
-        5. Maintains the original intent and experiences
+        **Provide an improved version with these enhancements:**
+        1. **Technical Depth** - Add specific engineering details, calculations, methodologies
+        2. **Evidence Strength** - Strengthen examples and measurable outcomes
+        3. **Professional Language** - Use appropriate engineering terminology for {profession}
+        4. **Structure & Clarity** - Improve organization and readability
+        5. **Competency Alignment** - Better address indicators: {', '.join(section_data.get('indicators', []))}
 
-        Return the improved response with explanations of key changes.
+        **Format your response as:**
+
+        **Improvement Analysis:**
+        [Brief explanation of key improvements made and why they matter for ERB assessment]
+
+        **Improved Response:**
+        [The complete enhanced response ready for use]
+
+        Maintain the original experiences and intent while significantly elevating professional quality.
         """
 
         try:
@@ -336,18 +367,19 @@ class AdvancedAIService:
                 model="gpt-4",
                 messages=[
                     {"role": "system",
-                     "content": "You are an engineering editor improving ERB competency responses while preserving authentic experiences."},
+                     "content": "You are an engineering editor specializing in ERB submissions. Enhance responses while preserving authenticity and adding professional rigor."},
                     {"role": "user", "content": prompt},
                 ],
                 temperature=0.4,
                 max_tokens=2000,
             )
 
-            return self._safe_content(response)
+            improved = self._safe_content(response)
+            self._store_feedback_history(section_code, "Response quality improvement applied")
+            return improved
 
         except Exception as e:
             return f"⚠️ Error improving response: {str(e)}"
-
     def _compile_full_report(self, responses: dict, competency_data: dict) -> str:
         """Compile full report for analysis"""
         report_parts = []

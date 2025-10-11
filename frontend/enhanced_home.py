@@ -1,5 +1,7 @@
 import os
 import streamlit as st
+
+import enhanced_admin_dashboard
 from services.enhanced_api_client import EnhancedAPIClient
 import profile, about, contact, create_report, auth, reports
 from components.admin import admin
@@ -16,12 +18,12 @@ api = st.session_state.api
 def get_user_permissions(role: str) -> set:
     """Enhanced permission system"""
     permissions = {
-        "admin": {"manage_users", "view_all_reports", "system_settings", "audit_access", "export_data"},
-        "reviewer": {"review_reports", "view_all_reports", "export_reports"},
-        "engineer": {"create_reports", "view_own_reports", "export_reports", "ai_feedback"},
-        "technologist": {"create_reports", "view_own_reports", "export_reports", "ai_feedback"},
-        "technician": {"create_reports", "view_own_reports", "export_reports", "ai_feedback"},
-        "candidate": {"view_own_reports", "create_reports"}
+        "admin": {"manage_users", "view_all_reports", "system_settings", "audit_access", "export_data", "ai_features"},
+        "reviewer": {"review_reports", "view_all_reports", "export_reports", "ai_features"},
+        "engineer": {"create_reports", "view_own_reports", "export_reports", "ai_feedback", "ai_features"},
+        "technologist": {"create_reports", "view_own_reports", "export_reports", "ai_feedback", "ai_features"},
+        "technician": {"create_reports", "view_own_reports", "export_reports", "ai_feedback", "ai_features"},
+        "candidate": {"view_own_reports", "create_reports", "ai_features"}
     }
     return permissions.get(role, set())
 
@@ -39,7 +41,8 @@ def initialize_session_state():
         "is_verified": False,
         "is_active": True,
         "debug_mode": False,
-        "last_activity": None
+        "last_activity": None,
+        "ai_context": {}
     }
 
     for key, value in defaults.items():
@@ -67,6 +70,11 @@ def show_quick_actions(permissions):
             st.session_state.current_page = "Review Dashboard"
             st.rerun()
 
+    if "ai_features" in permissions:
+        if st.sidebar.button("🤖 AI Assistant", use_container_width=True):
+            st.session_state.current_page = "🤖 AI Assistant"
+            st.rerun()
+
 
 def show_user_profile_sidebar():
     """Enhanced user profile in sidebar"""
@@ -92,6 +100,82 @@ def show_user_profile_sidebar():
         success, user_data = api.get_current_user()
         if success:
             st.sidebar.metric("Reports", len(user_data.get('reports', [])))
+
+
+def get_competency_sections_for_ai():
+    """Get competency sections based on user role for AI features"""
+    from frontend.utilities.comps import engineer_competencies, technician_competencies, technologist_competencies
+
+    selected_role = st.session_state.get("selected_role", "Engineer")
+
+    if selected_role == "Engineering Technologist":
+        return technologist_competencies
+    elif selected_role == "Engineering Technician":
+        return technician_competencies
+    else:
+        return engineer_competencies  # Default to Engineer
+
+
+def get_current_responses_for_ai():
+    """Get current responses for AI analysis"""
+    selected_role = st.session_state.get("selected_role", "Engineer")
+    return st.session_state.get("responses", {}).get(selected_role, {})
+
+
+def ai_assistant_page():
+    """AI Assistant main page"""
+    st.title("🤖 AI Assistant")
+    st.markdown("""
+    <div style="background: linear-gradient(90deg, #667eea, #764ba2); padding: 1.5rem; border-radius: 10px; color: white; margin-bottom: 2rem;">
+        <h3 style="margin:0; color: white;">AI-Powered Report Enhancement</h3>
+        <p style="margin:0.5rem 0 0 0; color: white; opacity: 0.9;">
+            Smart templates, gap analysis, and quality improvement for your engineering reports
+        </p>
+    </div>
+    """, unsafe_allow_html=True)
+
+    selected_role = st.session_state.get("selected_role", "Engineer")  # From create_report.py role selector
+    user_role = st.session_state.get("user_role", "engineer")
+
+    st.info(f"**Professional Role:** {selected_role} | **System Role:** {user_role.title()}")
+
+    # Check if user has started a report
+    current_responses = get_current_responses_for_ai()
+    competency_sections = get_competency_sections_for_ai()
+
+
+    if not current_responses:
+        st.warning("""
+        **Start creating a report to unlock full AI features!**
+
+        To get the most out of the AI Assistant:
+        1. Go to **Create Report** and start working on your competencies
+        2. Return here for AI-powered enhancements
+        3. Use smart templates and gap analysis
+        """)
+
+        # Quick start buttons
+        col1, col2 = st.columns(2)
+        with col1:
+            if st.button("📝 Start New Report", use_container_width=True):
+                st.session_state.current_page = "Create Report"
+                st.rerun()
+        with col2:
+            if st.button("🚀 Explore AI Templates Anyway", use_container_width=True):
+                st.info("You can still use templates, but personalized analysis requires report data")
+
+    # Import and show AI templates UI
+    try:
+        from ai_templates_ui import show_ai_templates_ui
+        show_ai_templates_ui(competency_sections, selected_role, current_responses)
+    except ImportError as e:
+        st.error(f"AI Features temporarily unavailable: {str(e)}")
+        st.info("""
+        **To enable AI Features:**
+        1. Ensure `ai_templates.py` is in your `frontend` directory
+        2. Make sure `enhanced_ai_service.py` is in your `services` directory
+        3. Check that all dependencies are installed
+        """)
 
 
 def handle_authentication():
@@ -125,6 +209,8 @@ def main_app():
     main_pages = ["📊 Dashboard", "📝 Create Report", "📋 My Reports", "👤 Profile"]
 
     # Role-specific pages
+    if "ai_features" in permissions:
+        main_pages.append("🤖 AI Assistant")
     if "review_reports" in permissions:
         main_pages.append("👀 Review Dashboard")
     if "view_all_reports" in permissions:
@@ -164,6 +250,7 @@ def main_app():
         "📝 Create Report": create_report_page,
         "📋 My Reports": reports_page,
         "👤 Profile": profile_page,
+        "🤖 AI Assistant": ai_assistant_page,
         "👀 Review Dashboard": review_dashboard,
         "📈 All Reports": all_reports_page,
         "👥 User Management": user_management_page,
@@ -203,11 +290,14 @@ def show_dashboard():
 
     with col3:
         with st.container(border=True):
-            st.subheader("🔔 Notifications")
-            if not st.session_state.is_verified:
-                st.warning("Verify your email to access all features")
+            st.subheader("🤖 AI Features")
+            if "ai_features" in get_user_permissions(st.session_state.user_role):
+                st.success("AI Assistant Available")
+                if st.button("Try AI Assistant"):
+                    st.session_state.current_page = "🤖 AI Assistant"
+                    st.rerun()
             else:
-                st.success("All systems operational")
+                st.info("Upgrade for AI features")
 
 
 def create_report_page():
@@ -240,7 +330,8 @@ def review_dashboard():
 
 def all_reports_page():
     """All reports view for admins/reviewers"""
-    admin.admin_reports_view(api)
+    #admin.admin_reports_view(api)
+    enhanced_admin_dashboard.main()
 
 
 def user_management_page():

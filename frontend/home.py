@@ -141,8 +141,8 @@ if st.session_state.logged_in:
     elif page == "Profile":
         profile.profile_page(api)
     elif page == "User Management":
-        admin.admin_dashboard(api)  # ✅ Use the actual admin dashboard
-        #enhanced_admin_dashboard(api)
+        #admin.admin_dashboard(api)  # ✅ Use the actual admin dashboard
+        enhanced_admin_dashboard(api)
     elif page == "Admin Settings":
         # ✅ Replace placeholder with actual system monitoring
         admin.system_monitoring(api)

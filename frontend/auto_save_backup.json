@@ -1,24 +1,14 @@
 {
-  "role": "Engineering Technologist",
+  "role": "Engineering Technician",
   "responses": {
+    "_status": "draft",
     "A1_1": {
-      "title": "Apply theoretical and practical methods to identify or define a broadly defined problem, opportunity, or project",
-      "response": "Example 1: Morupule A \\u2013 Coal Feeder 3C Failing to Feed Coal into the Pulverizing Mill\\nOn 23 February 2025 during a night shift, Unit 3 at Morupule A Power Station experienced a load drop from 21.8 MW to 16.8 MW, despite a stable fuel feed rate. I identified erratic speed fluctuations in coal feeder 3C via the DCS and confirmed the correlation through trend analysis. After a field inspection revealed abnormal mechanical noise, I conducted a rapid risk assessment and isolated mill 3C to prevent equipment damage. I coordinated with Mechanical Maintenance and led a Failure Modes and Effects Analysis (FMEA). Visual inspection and test runs indicated chain slippage despite normal sprocket rotation. Maintenance records confirmed a recent sprocket replacement, leading me to recommend chain tensioning. The adjustment resolved the issue, and I restored the generator to 22.0 MW within three hours. Aligned with BPC\\u2019s Maduo 2026 strategy for asset reliability, I recommended a Root Cause Analysis (RCA) to prevent recurrence and improve coal feeder system integrity.",
+      "title": "Review and select appropriate techniques, procedures and methods to undertake tasks",
+      "response": "Example 1: Morupule A Coal Feeder 3C Failing to Feed Coal into the Pulverizing Mill. On 23 February 2025 during a night shift, Unit 3 at Morupule A Power Station experienced a load drop from 21.8 MW to 16.8 MW, despite a stable fuel feed rate. I identified erratic speed fluctuations in coal feeder 3C via the DCS and confirmed the correlation through trend analysis. After a field inspection revealed abnormal mechanical noise, I conducted a rapid risk assessment and isolated mill 3C to prevent equipment damage. I coordinated with Mechanical Maintenance and led a Failure Modes and Effects Analysis (FMEA). Visual inspection and test runs indicated chain slippage despite normal sprocket rotation. Maintenance records confirmed a recent sprocket replacement, leading me to recommend chain tensioning. The adjustment resolved the issue, and I restored the generator to 22.0 MW within three hours. Aligned with BPC Maduo 2026 strategy for asset reliability, I recommended a Root Cause Analysis (RCA) to prevent recurrence and improve coal feeder system integrity.",
       "word_count": 167
-    },
-    "A1_2": {
-      "title": "Apply theoretical and practical methods to identify or define a complex problem, opportunity, or project",
-      "response": "Example 2: Morupule A \\u2013 Unit 1 Mills Tripping on High Lube Oil Temperature\\nOn 21 November 2024, Unit 1 mills 1A and 1B at Morupule A experienced frequent trips due to high gearbox lube oil temperatures, resulting in only 2160 MWh generated against a 3024 MWh weekly target. As Control Room Engineer, I investigated the issue, aiming to restore mill Mean Time Between Failures (MTBF) from 12 hours back to 30 days.\\nI validated temperature data using both DCS and field logs, ruling out instrumentation errors. I then reviewed CCR logs and maintenance history, which confirmed no recent service on the lube oil system. After engaging CRTs, FOs, and the Chemical Services Department, contamination was ruled out.\\nRedirecting focus to the cooling water system, we found pressure at 0.5 bar (vs. the normal 2.5 bar). A partially open valve was discovered and fully opened, restoring normal temperatures and operations. I revised field log sheets to include cooling water pressure and formally recommended procedural updates to institutionalize the learning\\u2014supporting BPC\\u2019s asset reliability objectives under Maduo 2026",
-      "word_count": 173
-    },
-    "A2_1": {
-      "title": "Develop technological solutions to complex problems, using knowledge and understanding",
-      "response": "Develop technological solutions to complex problems, using knowledge and understanding\",\n    \"response\": \"Example 1: Designing a Cooling Water System for Unit 2 ID Fan\\nIn 2022, Morupule A\\u2019s Unit 2 ID Fan suffered repeated trips due to high bearing temperatures, especially during day peaks. As an Operations Engineer, I collaborated with Planning, MMD, IMD, CSD, and PTSD during the statutory outage to design a permanent solution. My objective was to eliminate temperature-induced trips and improve fan reliability in line with BPC\\u2019s Maduo 2026 target of asset productivity. Functional tests ruled out instrumentation faults, oil contamination, and mechanical defects. Reviewing design drawings, I discovered unused provisions for bearing water cooling. MMD proposed tapping mill cooling lines, but I advised using the boiler\\u2019s cooling header to avoid compromising mill performance. I supervised off-load and on-load commissioning. Results showed a 10\\u00b0C drop in bearing temperatures, with zero post-installation trips. The project, completed in-house at minimal cost, included risk control for chemical leakage potential and scheduled periodic inspections per ISO 14001 principles. The solution delivered sustainable, cost-effective operational stability.",
-      "word_count": 173
-    },
-    "_status": "draft"
+    }
   },
   "current_section": 0,
-  "last_modified": "2025-10-10T21:43:38.705519",
+  "last_modified": "2025-10-11T20:45:44.817233",
   "version": "2.0"
 }
