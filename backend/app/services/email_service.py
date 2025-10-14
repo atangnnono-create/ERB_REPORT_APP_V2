@@ -360,7 +360,7 @@ class EmailService:
 
     def send_password_reset_email(self, to_email: str, reset_token: str, username: str) -> Tuple[bool, str]:
         """Send password reset email with enhanced template"""
-        reset_url = f"{self.config.base_url}/auth/reset-password?token={reset_token}"
+        reset_url = f"{self.config.base_url}/auth/?reset_token={reset_token}"
 
         html_content = self._create_email_template(
             title="Reset Your Password",

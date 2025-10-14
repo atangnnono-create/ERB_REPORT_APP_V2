@@ -22,16 +22,6 @@ def generate_verification_token():
 def is_token_expired(expires_at: datetime) -> bool:
     return datetime.now() > expires_at
 
-@router.post("/forgot-password")
-async def forgot_password(email: str, background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
-    # Generate reset token, send email, etc.
-    pass
-
-@router.post("/reset-password")
-async def reset_password(token: str, new_password: str, db: Session = Depends(get_db)):
-    # Validate token, update password
-    pass
-
 
 @router.post("/register", response_model=schemas.UserResponse)
 def register(

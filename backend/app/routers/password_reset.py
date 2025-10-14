@@ -20,16 +20,34 @@ async def forgot_password(
         db: Session = Depends(get_db)
 ):
     """Request password reset"""
+
+    ####################################################
+    """Request password reset"""
+    print(f"🔍 BACKEND DEBUG: Forgot password requested for: {request.email}")
+    ####################################################
     user = crud.get_user_by_email(db, request.email)
+
+    ##########################################################
+    print(f"🔍 BACKEND DEBUG: User found: {user is not None}")
+    #########################################################
 
     # Always return success to prevent email enumeration
     if not user:
+        #####################################################
+        print("🔍 BACKEND DEBUG: No user found with this email")
+        return {
+            "message": "If the email exists, a password reset link has been sent",
+            "email": request.email}
+        #####################################################
         return {
             "message": "If the email exists, a password reset link has been sent",
             "email": request.email
         }
 
     if not user.is_active:
+        #######################################
+        print("🔍 BACKEND DEBUG: User account is deactivated")
+        ########################################
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Account is deactivated"
@@ -37,6 +55,13 @@ async def forgot_password(
 
     # Generate reset token
     reset_token = crud.create_password_reset_token(db, user.id)
+
+    ##################################################
+    print(f"🔍 BACKEND DEBUG: Reset token generated: {reset_token}")
+
+    # Test email service directly (not in background)
+    print("🔍 BACKEND DEBUG: Testing email service directly...")
+    ###################################################
 
     # Send reset email in background
     background_tasks.add_task(
@@ -55,11 +80,15 @@ async def forgot_password(
         resource_type="user",
         resource_id=user.id
     )
-
-    return {
+    response = {
         "message": "If the email exists, a password reset link has been sent",
         "email": request.email
     }
+    #############################################################
+    print(f"🔍 BACKEND DEBUG: Returning response: {response}")
+    #############################################################
+
+    return response
 
 
 @router.post("/reset-password", response_model=schemas.PasswordResetResponse)
@@ -68,20 +97,31 @@ async def reset_password(
         db: Session = Depends(get_db)
 ):
     """Reset password with token"""
+    print(f"🔍 BACKEND DEBUG: Reset password endpoint called")
+    print(f"🔍 BACKEND DEBUG: Received token: {reset_data.token}")
+    print(
+        f"🔍 BACKEND DEBUG: Received password length: {len(reset_data.new_password) if reset_data.new_password else 0}")
+
     user = crud.get_user_by_reset_token(db, reset_data.token)
     if not user:
+        print("🔍 BACKEND DEBUG: No user found with this token")
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Invalid or expired reset token"
         )
 
+    print(f"🔍 BACKEND DEBUG: Found user: {user.username}")
+
     # Update password
     success = crud.update_user_password(db, user.id, reset_data.new_password)
     if not success:
+        print("🔍 BACKEND DEBUG: Failed to update password in database")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to update password"
         )
+
+    print("🔍 BACKEND DEBUG: Password updated successfully")
 
     # Log the action
     audit_service.log_action(
@@ -93,13 +133,13 @@ async def reset_password(
         resource_id=user.id
     )
 
-    return {
+    response = {
         "message": "Password reset successfully",
         "email": user.email
     }
+    print(f"🔍 BACKEND DEBUG: Returning response: {response}")
 
-
-@router.post("/change-password", response_model=schemas.PasswordResetResponse)
+    return response
 async def change_password(
         password_data: schemas.PasswordChange,
         db: Session = Depends(get_db),

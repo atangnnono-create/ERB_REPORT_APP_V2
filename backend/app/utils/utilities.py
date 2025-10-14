@@ -226,6 +226,10 @@ class AuditActions:
     ADMIN_VIEW_ALL_USERS = "admin_view_all_users"
     ADMIN_VIEW_ALL_REPORTS = "admin_view_all_reports"
 
+    PASSWORD_RESET_REQUEST = "password_reset_request"
+    PASSWORD_RESET_COMPLETE = "password_reset_complete"
+    PASSWORD_CHANGE = "password_change"
+
 
 # Global audit service instance
 audit_service = AuditService()

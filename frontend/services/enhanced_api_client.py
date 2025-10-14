@@ -73,9 +73,17 @@ class EnhancedAPIClient:
 
     def _handle_response(self, response: requests.Response) -> Tuple[bool, Any]:
         """Enhanced response handler with better error handling"""
+        ######################################################################
+        print(f"=== DEBUG _handle_response ===")
+        print(f"Response status: {response.status_code}")
+        print(f"Response content: {response.content}")
+        ######################################################################
         try:
             if response.status_code == 200:
                 data = response.json() if response.content else {"detail": "Success"}
+                ##########################################################
+                print(f"DEBUG: Success data type: {type(data)}, data: {data}")
+                #########################################################
                 return True, data
             elif response.status_code == 401:
                 # Token expired or invalid
@@ -93,10 +101,29 @@ class EnhancedAPIClient:
                 return False, {"detail": f"Server error (HTTP {response.status_code})"}
             else:
                 error_data = response.json() if response.content else {"detail": f"HTTP {response.status_code}"}
+                ###########################################################
+                print(f"DEBUG: Error data type: {type(error_data)}, data: {error_data}")
+                # Extract error message from list if needed
+                if isinstance(error_data, dict) and isinstance(error_data.get('detail'), list):
+                    # Get the first error message from the list
+                    errors = error_data['detail']
+                    if errors:
+                        error_msg = errors[0].get('msg', 'Validation error')
+                    else:
+                        error_msg = 'Validation error'
+                #######################################################
+                    return False,{"detail": error_msg}   #removed  error_data, during debug and added {"detail": error_msg}
                 return False, error_data
         except json.JSONDecodeError:
+            ##############################################
+            print("DEBUG: JSON decode error")
+            ###############################################
             return False, {"detail": "Invalid response from server"}
         except Exception as e:
+            #################################################
+            print(f"DEBUG: Exception in _handle_response: {e}")
+            print(f"DEBUG: Exception type: {type(e)}")
+            ###############################################
             return False, {"detail": f"Request failed: {str(e)}"}
 
     def _request_with_retry(self, method: str, endpoint: str, **kwargs) -> Tuple[bool, Any]:
@@ -404,19 +431,34 @@ class EnhancedAPIClient:
     # -------------- Password Reset Methods ---------------------------
     def forgot_password(self, email: str) -> Tuple[bool, Any]:
         """Request password reset"""
-        return self._request_with_retry(
-            'POST',
-            '/api/v1/auth/forgot-password',
-            json={"email": email}
+        ###############################################
+        print(f"=== DEBUG forgot_password ===")
+        print(f"Calling endpoint with email: {email}")
+        #############################################
+        result = self._request_with_retry(
+        'POST',
+        '/api/v1/auth/forgot-password',
+        json={"email": email}
         )
+        ###########################################
+        print(f"DEBUG: forgot_password result: {result}")
+        #########################################
+        return result
 
     def reset_password(self, token: str, new_password: str) -> Tuple[bool, Any]:
         """Reset password with token"""
-        return self._request_with_retry(
+        print(f"=== DEBUG reset_password ===")
+        print(f"Token: {token}")
+        print(f"Password length: {len(new_password)}")
+
+        result = self._request_with_retry(
             'POST',
             '/api/v1/auth/reset-password',
             json={"token": token, "new_password": new_password}
         )
+
+        print(f"=== DEBUG reset_password result: {result} ===")
+        return result
 
     def validate_reset_token(self, token: str) -> Tuple[bool, Any]:
         """Validate reset token"""

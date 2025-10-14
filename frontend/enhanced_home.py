@@ -404,7 +404,7 @@ def contact_page():
 
 
 def main():
-    # ===== EMAIL VERIFICATION HANDLER - MUST BE FIRST =====
+    # ===== EMAIL VERIFICATION HANDLER=====
     query_params = st.query_params
     if 'token' in query_params:
         # FIX: Properly extract the full token
@@ -477,6 +477,41 @@ def main():
         # Stop execution - don't show normal app
         st.stop()
     # ===== END VERIFICATION HANDLER =====
+
+    # ===== PASSWORD RESET HANDLER =====
+    if 'reset_token' in query_params:
+        # Extract reset token
+        reset_token_param = query_params['reset_token']
+        print(f"=== DEBUG: Raw reset token param: {reset_token_param} ===")
+
+        if isinstance(reset_token_param, list) and len(reset_token_param) > 0:
+            reset_token = reset_token_param[0]
+        else:
+            reset_token = str(reset_token_param)
+
+        print(f"=== DEBUG: Final reset token: {reset_token} ===")
+        print(f"=== DEBUG: Reset token length: {len(reset_token)} ===")
+
+        # Set page config for password reset page
+        st.set_page_config(
+            page_title="Reset Password - Engineering Report Deck",
+            layout="centered"
+        )
+
+        st.markdown("""
+               <div style="background: linear-gradient(90deg, #2c3e50, #3498db); padding: 2rem; border-radius: 10px; text-align: center; color: white; margin-bottom: 2rem;">
+                   <h1 style="margin:0; font-size: 2.5rem;">🏭 Engineering Report Deck</h1>
+                   <p style="margin:0; font-size: 1.2rem;">AI Revolution Driving Engineering Evolution ✨</p>
+                   <p style="margin-top: 0.5rem; font-size: 0.9rem; opacity: 0.9;">
+                       <b>Version:</b> 2.0 — Tsodilo Edition
+                   </p>
+               </div>
+           """, unsafe_allow_html=True)
+
+        # Call the reset password UI
+        from frontend import auth
+        auth.reset_password_ui(api)
+        st.stop()
 
 
     ################################################################

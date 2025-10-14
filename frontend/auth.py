@@ -113,14 +113,25 @@ def reset_password_ui(api: EnhancedAPIClient):
     """Reset password UI - handle token from URL and set new password"""
     st.header("🔄 Set New Password")
 
-    # Check for reset token in URL
+    # Check for reset token in URL (support both parameter names)
     query_params = st.query_params
-    if 'token' not in query_params:
+    token = None
+
+    # First check for the new reset_token parameter
+    if 'reset_token' in query_params:
+        token_param = query_params['reset_token']
+        token = token_param[0] if isinstance(token_param, list) else token_param
+        print(f"=== DEBUG: Using reset_token: {token} ===")
+    # Fallback to token parameter for backward compatibility
+    elif 'token' in query_params:
+        token_param = query_params['token']
+        token = token_param[0] if isinstance(token_param, list) else token_param
+        print(f"=== DEBUG: Using token: {token} ===")
+
+    if not token:
         st.error("❌ Invalid or missing reset token")
         st.info("Please use the password reset link from your email.")
         return
-
-    token = query_params['token'][0] if isinstance(query_params['token'], list) else query_params['token']
 
     # Validate token first
     with st.spinner("Validating reset link..."):
@@ -133,6 +144,8 @@ def reset_password_ui(api: EnhancedAPIClient):
 
     # Password reset form
     st.success("✅ Reset link validated! Please enter your new password.")
+
+    password_reset_success = False  # Track if reset was successful
 
     with st.form("reset_password_form"):
         new_password = st.text_input("🔑 New Password", type="password",
@@ -162,11 +175,15 @@ def reset_password_ui(api: EnhancedAPIClient):
                     st.success("🎉 Password reset successfully!")
                     st.balloons()
                     st.info("You can now login with your new password.")
+                    password_reset_success = True
 
                     # Clear token from URL
                     st.query_params.clear()
-
-                    if st.button("🔑 Go to Login", use_container_width=True):
-                        st.rerun()
                 else:
                     st.error(f"❌ {result.get('detail', 'Failed to reset password')}")
+
+    # Show login button OUTSIDE the form, only after successful reset
+    if password_reset_success:
+        st.markdown("---")
+        if st.button("🔑 Go to Login", use_container_width=True):
+            st.rerun()

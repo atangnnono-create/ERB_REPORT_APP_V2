@@ -178,3 +178,20 @@ def debug_users(db: Session = Depends(get_db)):
     if success:
         return {"users": users}
     return {"users": []}
+
+# Add this to your main.py or any router temporarily
+@app.get("/debug/user/{email}")
+def debug_user(email: str, db: Session = Depends(get_db)):
+    """Debug endpoint to check user password hash"""
+    from backend.app.models import models
+    user = db.query(models.User).filter(models.User.email == email).first()
+    if user:
+        return {
+            "username": user.username,
+            "email": user.email,
+            "hashed_password": user.hashed_password,
+            "hashed_password_length": len(user.hashed_password),
+            "verification_token": user.verification_token,
+            "is_active": user.is_active
+        }
+    return {"error": "User not found"}
