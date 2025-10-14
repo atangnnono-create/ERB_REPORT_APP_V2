@@ -2,7 +2,7 @@ from backend.app.models import models
 from backend.app.schemas import schemas
 from backend.app.crud import crud
 from datetime import datetime, timedelta
-from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks,  Request
+from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks, Request
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 import secrets
@@ -83,54 +83,61 @@ def register(
     return db_user
 
 
-@router.get("/verify-email")
-def verify_email(token: str, db: Session = Depends(get_db)):
+from pydantic import BaseModel
+class VerifyEmailRequest(BaseModel):
+    token: str
+@router.post("/verify-email")
+def verify_email(verify_request: VerifyEmailRequest, db: Session = Depends(get_db)):
     """Verify user's email address with token validation"""
+
+    token = verify_request.token
+    print(f"=== DEBUG: Received token: {token} ===")
+    print(f"=== DEBUG: Token length: {len(token)} ===")
+
+    # Check if any users have verification tokens
+    all_users_with_tokens = db.query(models.User).filter(models.User.verification_token.isnot(None)).all()
+    print(f"=== DEBUG: Users with tokens: {len(all_users_with_tokens)} ===")
+
+    for user in all_users_with_tokens:
+        print(f"=== DEBUG: User: {user.username}, Token: {user.verification_token} ===")
+        if user.verification_token == token:
+            print(f"=== DEBUG: TOKEN MATCH FOUND! ===")
+
     user = db.query(models.User).filter(models.User.verification_token == token).first()
 
     if not user:
+        print("=== DEBUG: No user found with this token ===")
         raise HTTPException(
             status_code=400,
             detail="Invalid verification token. Please request a new verification email."
         )
 
-    # ✅ Check if token is expired
+    print(f"=== DEBUG: Found user: {user.username} ===")
+
+    # Check if token is expired
     if user.verification_token_expires and is_token_expired(user.verification_token_expires):
-        # Clear expired token
+        print("=== DEBUG: Token expired ===")
         user.verification_token = None
         user.verification_token_expires = None
         db.commit()
-
         raise HTTPException(
             status_code=400,
             detail="Verification token has expired. Please request a new verification email."
         )
 
-    # ✅ Mark user as verified and clear token
+    # Mark user as verified
     user.is_verified = True
     user.verification_token = None
     user.verification_token_expires = None
     db.commit()
 
-    # ✅ Send welcome email
-    email_service.send_welcome_email(user.email, user.username)
-
-    # ✅ Log the verification
-    audit_service.log_action(
-        db=db,
-        action=AuditActions.EMAIL_VERIFIED,
-        user_id=user.id,
-        username=user.username,
-        resource_type="user",
-        resource_id=user.id
-    )
+    print("=== DEBUG: Email verified successfully ===")
 
     return {
         "message": "Email verified successfully! You can now login and access all features.",
         "username": user.username,
         "email": user.email
     }
-
 
 @router.post("/resend-verification")
 def resend_verification(

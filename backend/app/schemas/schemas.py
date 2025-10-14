@@ -227,3 +227,6 @@ class ListResponse(BaseModel):
 class DetailResponse(BaseModel):
     """Detail API response format"""
     data: Any
+
+class VerifyEmail(BaseModel):
+    token: str

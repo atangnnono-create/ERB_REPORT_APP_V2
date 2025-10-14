@@ -1,17 +1,15 @@
 import streamlit as st
-import requests
 import json
 import pandas as pd
 from datetime import datetime, timedelta
-from typing import List, Dict, Any, Optional
+from typing import List, Dict
 from services.enhanced_api_client import EnhancedAPIClient
 from utilities.error_handling import ErrorHandler, LoadingState, with_loading
-from services import verification
-import create_report
 
 
 def enhanced_reports_ui(api: EnhancedAPIClient):
     """Enhanced reports management with bulk operations"""
+
     st.set_page_config(page_title="Reports Management", layout="wide")
 
     if "token" not in st.session_state or not st.session_state.token:
@@ -366,29 +364,102 @@ def show_report_actions(report_id: int, reports: List[Dict], api: EnhancedAPICli
 
     import time
     unique_suffix = str(hash(f"{report_id}_{time.time()}"))
-    col1, col2, col3, col4 = st.columns(4)
+
+    # Add extra column for Continue Editing - now 5 columns
+    col1, col2, col3, col4, col5 = st.columns(5)
 
     with col1:
-        # Status management
         current_status = report.get('status', 'draft')
         if current_status == 'draft':
-            if st.button("📤 Submit for Review", key=f"submit_{unique_suffix}"):
-                with LoadingState("Submitting report..."):
-                    success, result = api.submit_report_for_review(report_id)
-                    if success:
-                        st.success("Report submitted for review!")
-                        st.rerun()
-                    else:
-                        ErrorHandler.show_error(f"Failed to submit: {result.get('detail', 'Unknown error')}")
+            if st.button("📤 Submit for Review", key=f"submit_{unique_suffix}", use_container_width=True):
+                # Debug: Print everything we know
+                st.write("## 🐛 DEBUG - Submit for Review")
+                st.write(f"**Report ID:** {report_id}")
+                st.write(f"**Report Title:** {report.get('title')}")
+                st.write(f"**Current Status:** {current_status}")
+                st.write(f"**User ID:** {st.session_state.get('user_id')}")
+                st.write(f"**User Role:** {st.session_state.get('user_role')}")
+                st.write(f"**Report Owner ID:** {report.get('owner_id')}")
+                st.write(f"**API Base URL:** {api.base_url}")
 
+                # Test if API method exists and is callable
+                st.write("### API Method Check")
+                if hasattr(api, 'submit_report_for_review'):
+                    st.success("✅ api.submit_report_for_review method exists")
+                    try:
+                        # Call the method and capture everything
+                        with LoadingState("Calling API..."):
+                            st.write("### Making API Call...")
+                            success, result = api.submit_report_for_review(report_id)
+
+                            st.write("### API Response:")
+                            st.write(f"**Success:** {success}")
+                            st.write(f"**Result Type:** {type(result)}")
+                            st.write(f"**Result:** {result}")
+
+                            if success:
+                                st.success("🎉 API Call SUCCESSFUL!")
+                                st.balloons()
+                                # Wait a moment to see the success
+                                import time
+                                time.sleep(2)
+                                st.rerun()
+                            else:
+                                st.error("💥 API Call FAILED!")
+                                # Show detailed error
+                                if isinstance(result, dict):
+                                    st.write("**Error Details:**")
+                                    for key, value in result.items():
+                                        st.write(f"- {key}: {value}")
+                                else:
+                                    st.write(f"**Raw Error:** {result}")
+                    except Exception as e:
+                        st.error(f"🚨 EXCEPTION during API call: {str(e)}")
+                        st.write("**Exception Type:**", type(e).__name__)
+                        import traceback
+                        st.write("**Traceback:**")
+                        st.code(traceback.format_exc())
+                else:
+                    st.error("❌ api.submit_report_for_review method NOT FOUND")
     with col2:
-        # Download
-        if st.button("📥 Download JSON", key=f"download_{unique_suffix}"):
-            download_report_json(report)
+        # Download - FIXED VERSION
+        try:
+            # Transform backend format to frontend format
+            role = determine_role_from_report(report)
+
+            # Build the frontend-compatible structure
+            frontend_format = {
+                role: {}
+            }
+
+            # Transform competencies
+            for competency in report.get('competencies', []):
+                key = competency['competency_key']
+                response_text = competency['user_response'] or ""
+
+                frontend_format[role][key] = {
+                    "title": competency['competency_title'],
+                    "response": response_text,
+                    "word_count": len(response_text.split()) if response_text else 0
+                }
+
+            json_str = json.dumps(frontend_format, indent=2, ensure_ascii=False)
+
+            st.download_button(
+                "📥 Download JSON",
+                data=json_str,
+                file_name=f"report_{report['id']}_{datetime.now().strftime('%Y%m%d')}.json",
+                mime="application/json",
+                key=f"download_{unique_suffix}",
+                use_container_width=True
+            )
+
+        except Exception as e:
+            st.error(f"Error preparing download: {str(e)}")
 
     with col3:
         # Delete
-        if st.button("🗑️ Delete", key=f"delete_{unique_suffix}"):
+        if st.button("🗑️ Delete", key=f"delete_{unique_suffix}", use_container_width=True):
             if st.session_state.get('user_role') in ['admin'] or report.get('owner_id') == st.session_state.get(
                     'user_id'):
                 with LoadingState("Deleting report..."):
@@ -403,7 +474,7 @@ def show_report_actions(report_id: int, reports: List[Dict], api: EnhancedAPICli
 
     with col4:
         # View details
-        if st.button("👁️ View Details", key=f"view_{unique_suffix}"):
+        if st.button("👁️ View Details", key=f"view_{unique_suffix}", use_container_width=True):
             show_report_details(report)
 
 
@@ -489,6 +560,7 @@ def bulk_update_status(api: EnhancedAPIClient, report_ids: List[int], new_status
         # For draft -> submitted, use submit endpoint
         if new_status == "submitted":
             success, result = api.submit_report_for_review(report_id)
+
         else:
             # For other status changes, use review endpoint (admin/reviewer only)
             success, result = api.review_report(report_id, new_status, "Bulk status update")
@@ -540,12 +612,31 @@ def bulk_delete_reports(api: EnhancedAPIClient, report_ids: List[int]):
 
 
 def bulk_export_reports(reports: List[Dict]):
-    """Bulk export selected reports"""
+    """Bulk export selected reports in create_report.py compatible format"""
     export_data = {
         "exported_at": datetime.now().isoformat(),
         "total_reports": len(reports),
-        "reports": reports
+        "reports": []
     }
+
+    for report in reports:
+        # Transform each report to frontend format
+        role = determine_role_from_report(report)
+        frontend_report = {
+            role: {}
+        }
+
+        for competency in report.get('competencies', []):
+            key = competency['competency_key']
+            response_text = competency['user_response'] or ""
+
+            frontend_report[role][key] = {
+                "title": competency['competency_title'],
+                "response": response_text,
+                "word_count": len(response_text.split()) if response_text else 0
+            }
+
+        export_data["reports"].append(frontend_report)
 
     json_str = json.dumps(export_data, indent=2, ensure_ascii=False)
 
@@ -556,21 +647,21 @@ def bulk_export_reports(reports: List[Dict]):
         mime="application/json",
         key="bulk_export"
     )
+#################################################################################################
 
 
-def download_report_json(report: Dict):
-    """Download individual report as JSON"""
-    json_str = json.dumps(report, indent=2, ensure_ascii=False)
+def determine_role_from_report(report: Dict) -> str:
+    """Determine role from report title"""
+    title = report.get('title', '').lower()
 
-    st.download_button(
-        "💾 Download JSON",
-        data=json_str,
-        file_name=f"report_{report['id']}_{datetime.now().strftime('%Y%m%d')}.json",
-        mime="application/json",
-        key=f"download_{report['id']}_final"
-    )
+    if 'technician' in title:
+        return "Engineering Technician"
+    elif 'technologist' in title:
+        return "Engineering Technologist"
+    else:
+        return "Engineer"  # Default
 
-
+######################################################################################
 def format_date(date_str: str) -> str:
     """Format date string for display"""
     if not date_str:

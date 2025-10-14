@@ -1,5 +1,5 @@
 import streamlit as st
-from services.enhanced_ai_service import AdvancedAIService
+from frontend.enhanced_ai_service import AdvancedAIService
 
 ai_service = AdvancedAIService()
 
@@ -125,6 +125,7 @@ def show_gap_analysis(current_responses: dict, competency_sections: dict, profes
     """Competency gap analysis synchronized with create_report.py progress"""
     st.subheader("🔍 Competency Gap Analysis")
 
+
     # Get role-specific competencies for accurate counting
     role_competencies = get_role_specific_competencies(profession)
 
@@ -132,18 +133,36 @@ def show_gap_analysis(current_responses: dict, competency_sections: dict, profes
         st.error("Unable to load competencies for analysis.")
         return
 
-    # Calculate completion - synchronized with create_report.py logic
+    # FIX: Safe completion calculation
     completed_count = 0
     total_count = len(role_competencies)
 
-    # Use the same logic as create_report.py for consistency
+    # Use safe logic that handles ANY data structure
     for competency_key in role_competencies.keys():
-        response_data = current_responses.get(competency_key, {})
-        response_text = response_data.get("response", "").strip()
+        try:
+            # Safe extraction of response data
+            response_data = None
 
-        # Consider it completed if there's any response text
-        if response_text:
-            completed_count += 1
+            if isinstance(current_responses, dict) and competency_key in current_responses:
+                response_data = current_responses[competency_key]
+
+            # Extract response text safely
+            response_text = ""
+            if isinstance(response_data, dict):
+                response_text = response_data.get("response", "")
+            elif isinstance(response_data, str):
+                response_text = response_data
+            elif response_data is not None:
+                response_text = str(response_data)
+
+            # Clean and check response
+            if response_text and response_text.strip():
+                completed_count += 1
+
+        except Exception as e:
+            # Skip this competency if there's an error
+            print(f"⚠️ Error processing competency {competency_key}: {e}")
+            continue
 
     # Display progress metrics
     col1, col2, col3 = st.columns(3)
@@ -174,6 +193,7 @@ def show_gap_analysis(current_responses: dict, competency_sections: dict, profes
     # Detailed gap analysis
     if st.button("📊 Analyze Competency Gaps", use_container_width=True):
         with st.spinner("Analyzing competency gaps and providing recommendations..."):
+            # FIX: Pass the data safely to AI service
             analysis = ai_service.analyze_competency_gaps(
                 current_responses, role_competencies, profession
             )
@@ -222,11 +242,8 @@ def show_gap_analysis(current_responses: dict, competency_sections: dict, profes
                     - Use Quality Improver for final enhancements
                     - Consider peer review before submission
                     """)
-
             else:
                 st.error(analysis)
-
-
 def show_quality_improver(competency_sections: dict, profession: str, current_responses: dict):
     """Response quality improvement"""
     st.subheader("📈 Response Quality Improver")

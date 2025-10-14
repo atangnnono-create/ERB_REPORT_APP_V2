@@ -1,11 +1,10 @@
-import os
 import streamlit as st
 
 import enhanced_admin_dashboard
 from services.enhanced_api_client import EnhancedAPIClient
-import profile, about, contact, create_report, auth, reports
+import profile, about, contact, create_report, auth, enhanced_reports
 from components.admin import admin
-from services import verification
+from frontend import verification
 from utilities.error_handling import ErrorHandler, LoadingState, display_network_status
 
 # Initialize enhanced API client
@@ -13,6 +12,7 @@ if "api" not in st.session_state:
     st.session_state.api = EnhancedAPIClient()
 
 api = st.session_state.api
+
 
 
 def get_user_permissions(role: str) -> set:
@@ -82,12 +82,9 @@ def show_user_profile_sidebar():
     st.sidebar.subheader("👤 User Profile")
 
     # User info with status
-    col1, col2 = st.sidebar.columns([1, 3])
-    with col1:
-        st.write("🎯" if st.session_state.is_verified else "⏳")
-    with col2:
-        st.write(f"**{st.session_state.username}**")
-        st.caption(f"{st.session_state.user_role.title()}")
+
+    st.sidebar.success(f"👋 Logged in as **{st.session_state.username}**")
+    st.sidebar.info(f"🎯 Role: {st.session_state.user_role.title()}")
 
     # Verification status
     if st.session_state.is_verified:
@@ -97,14 +94,16 @@ def show_user_profile_sidebar():
 
     # Quick stats
     with LoadingState("Loading stats...", use_container=False):
-        success, user_data = api.get_current_user()
+        success, user_data = api.fetch_reports()
         if success:
-            st.sidebar.metric("Reports", len(user_data.get('reports', [])))
+            st.sidebar.metric("Reports", len(user_data))
+
+
 
 
 def get_competency_sections_for_ai():
     """Get competency sections based on user role for AI features"""
-    from frontend.utilities.comps import engineer_competencies, technician_competencies, technologist_competencies
+    from utilities.comps import engineer_competencies, technician_competencies, technologist_competencies
 
     selected_role = st.session_state.get("selected_role", "Engineer")
 
@@ -117,10 +116,32 @@ def get_competency_sections_for_ai():
 
 
 def get_current_responses_for_ai():
-    """Get current responses for AI analysis"""
-    selected_role = st.session_state.get("selected_role", "Engineer")
-    return st.session_state.get("responses", {}).get(selected_role, {})
+    """Get current responses for AI analysis with proper structure handling"""
+    try:
+        selected_role = st.session_state.get("selected_role", "Engineer")
+        responses_data = st.session_state.get("responses", {})
 
+        current_responses = {}
+
+        # Extract responses for the selected role in the expected format
+        if isinstance(responses_data, dict) and selected_role in responses_data:
+            role_responses = responses_data[selected_role]
+
+            if isinstance(role_responses, dict):
+                # Convert from create_report.py format to AI service expected format
+                for competency_key, response_data in role_responses.items():
+                    # Skip the _status key and ensure we have proper response data
+                    if competency_key != '_status' and isinstance(response_data, dict):
+                        current_responses[competency_key] = {
+                            'response': response_data.get('response', ''),
+                            'title': response_data.get('title', 'Unknown Title')
+                        }
+
+        return current_responses
+
+    except Exception as e:
+        print(f"Error getting responses for AI: {e}")
+        return {}
 
 def ai_assistant_page():
     """AI Assistant main page"""
@@ -134,15 +155,37 @@ def ai_assistant_page():
     </div>
     """, unsafe_allow_html=True)
 
-    selected_role = st.session_state.get("selected_role", "Engineer")  # From create_report.py role selector
+    selected_role = st.session_state.get("selected_role", "Engineer")
     user_role = st.session_state.get("user_role", "engineer")
 
     st.info(f"**Professional Role:** {selected_role} | **System Role:** {user_role.title()}")
 
-    # Check if user has started a report
-    current_responses = get_current_responses_for_ai()
-    competency_sections = get_competency_sections_for_ai()
+    # FIX: Get current responses with proper structure handling
+    current_responses = {}
+    try:
+        responses_data = st.session_state.get("responses", {})
 
+
+        # Extract responses for the selected role in the expected format
+        if isinstance(responses_data, dict) and selected_role in responses_data:
+            role_responses = responses_data[selected_role]
+
+            if isinstance(role_responses, dict):
+                # Convert from create_report.py format to AI service expected format
+                for competency_key, response_data in role_responses.items():
+                    # Skip the _status key and ensure we have proper response data
+                    if competency_key != '_status' and isinstance(response_data, dict):
+                        current_responses[competency_key] = {
+                            'response': response_data.get('response', ''),
+                            'title': response_data.get('title', 'Unknown Title')
+                        }
+
+
+    except Exception as e:
+        st.error(f"Error loading response data: {str(e)}")
+        current_responses = {}
+
+    competency_sections = get_competency_sections_for_ai()
 
     if not current_responses:
         st.warning("""
@@ -163,6 +206,8 @@ def ai_assistant_page():
         with col2:
             if st.button("🚀 Explore AI Templates Anyway", use_container_width=True):
                 st.info("You can still use templates, but personalized analysis requires report data")
+                # Pass empty responses for template-only access
+                current_responses = {}
 
     # Import and show AI templates UI
     try:
@@ -176,11 +221,12 @@ def ai_assistant_page():
         2. Make sure `enhanced_ai_service.py` is in your `services` directory
         3. Check that all dependencies are installed
         """)
-
-
+    except Exception as e:
+        st.error(f"Error loading AI features: {str(e)}")
+        st.info("Please try refreshing the page or contact support if the issue persists.")
 def handle_authentication():
     """Handle login/registration flow"""
-    login_tab, register_tab = st.tabs(["🔑 Login", "📝 Register"])
+    login_tab, register_tab, forgot_tab = st.tabs(["🔑 Login", "📝 Register", "😉 Forgot Password"])
 
     with register_tab:
         auth.register_ui(api)
@@ -188,13 +234,14 @@ def handle_authentication():
     with login_tab:
         auth.login_ui(api)
 
-    # Add password reset option
-    st.markdown("---")
-    with st.expander("🔒 Forgot Password?"):
-        st.info("Please contact system administrator for password reset")
-        email = st.text_input("Enter your email")
-        if st.button("Request Password Reset"):
-            st.warning("Password reset functionality coming soon")
+    with forgot_tab:
+        # Check if we have a reset token in URL
+        query_params = st.query_params
+        if 'token' in query_params:
+            auth.reset_password_ui(api)  # Show reset password form
+        else:
+            auth.forgot_password_ui(api)  # Show forgot password form
+
 
 
 def main_app():
@@ -231,10 +278,6 @@ def main_app():
 
     # User profile section
     show_user_profile_sidebar()
-
-    # Network status
-    with st.sidebar.expander("🔧 System Status"):
-        display_network_status(api)
 
     # Logout button
     st.sidebar.markdown("---")
@@ -311,7 +354,7 @@ def create_report_page():
 def reports_page():
     """Reports page with error handling"""
     try:
-        reports.reports_ui(api)
+        enhanced_reports.enhanced_reports_ui(api)
     except Exception as e:
         ErrorHandler.show_error("Failed to load reports", str(e))
 
@@ -361,7 +404,82 @@ def contact_page():
 
 
 def main():
-    """Main application entry point"""
+    # ===== EMAIL VERIFICATION HANDLER - MUST BE FIRST =====
+    query_params = st.query_params
+    if 'token' in query_params:
+        # FIX: Properly extract the full token
+        token_param = query_params['token']
+        print(f"=== DEBUG: Raw token param: {token_param} ===")
+        print(f"=== DEBUG: Type: {type(token_param)} ===")
+
+        if isinstance(token_param, list) and len(token_param) > 0:
+            verification_token = token_param[0]
+        else:
+            verification_token = str(token_param)
+
+        print(f"=== DEBUG: Final token: {verification_token} ===")
+        print(f"=== DEBUG: Token length: {len(verification_token)} ===")
+
+        # Set page config for verification page - FIRST Streamlit command
+        st.set_page_config(
+            page_title="Verify Email - Engineering Report Deck",
+            layout="centered"
+        )
+
+        st.markdown("""
+             <div style="background: linear-gradient(90deg, #2c3e50, #3498db); padding: 2rem; border-radius: 10px; text-align: center; color: white; margin-bottom: 2rem;">
+                 <h1 style="margin:0; font-size: 2.5rem;">🏭 Engineering Report Deck</h1>
+                 <p style="margin:0; font-size: 1.2rem;">AI Revolution Driving Engineering Evolution ✨</p>
+                 <p style="margin-top: 0.5rem; font-size: 0.9rem; opacity: 0.9;">
+                     <b>Version:</b> 2.0 — Tsodilo Edition
+                 </p>
+             </div>
+         """, unsafe_allow_html=True)
+
+        with st.spinner("Verifying your email address..."):
+            try:
+                print(f"=== FRONTEND DEBUG: Calling API with token: {verification_token} ===")
+                success, result = api.verify_email(verification_token)
+                print(f"=== FRONTEND DEBUG: API response - Success: {success}, Result: {result} ===")
+
+                if success:
+                    st.success("🎉 Email verified successfully!")
+                    st.balloons()
+                    st.markdown("""
+                    **Your email has been verified! You can now:**
+
+                    - ✅ **Login** to your account
+                    - 📝 **Create** professional engineering reports  
+                    - 🤖 **Use** AI-powered features
+                    - 📊 **Track** your progress and history
+                    """)
+
+                    # Clear token from URL and show options
+                    st.query_params.clear()
+
+                    col1, col2 = st.columns(2)
+                    with col1:
+                        if st.button("🚀 Go to Login", use_container_width=True):
+                            st.rerun()
+                    with col2:
+                        if st.button("📝 Create Report", use_container_width=True):
+                            st.session_state.current_page = "Create Report"
+                            st.rerun()
+
+                else:
+                    error_msg = result.get('detail', 'Unknown error')
+                    st.error(f"❌ Verification failed: {error_msg}")
+
+            except Exception as e:
+                st.error(f"🚨 Error during verification: {str(e)}")
+                st.info("Please check the console for detailed error information.")
+
+        # Stop execution - don't show normal app
+        st.stop()
+    # ===== END VERIFICATION HANDLER =====
+
+
+    ################################################################
     st.set_page_config(
         page_title="🏭 Engineering Report Deck",
         layout="centered",
@@ -392,7 +510,7 @@ def main():
             <h1 style="margin:0; font-size: 2.5rem;">🏭 Engineering Report Deck</h1>
             <p style="margin:0; font-size: 1.2rem;">AI Revolution Driving Engineering Evolution ✨</p>
             <p style="margin-top: 0.5rem; font-size: 0.9rem; opacity: 0.9;">
-                <b>Version:</b> v2.0 — Enhanced Edition
+                <b>Version:</b> 2.0 — Tsodilo Edition
             </p>
         </div>
     """, unsafe_allow_html=True)

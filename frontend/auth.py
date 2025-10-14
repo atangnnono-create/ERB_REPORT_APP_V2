@@ -64,15 +64,9 @@ def register_ui(api: EnhancedAPIClient):
             with st.spinner("Creating your account..."):
                 success, res = api.register(username, email, password, full_name)
 
-                # Debug information
-                with st.expander("Debug Information"):
-                    st.write(f"API Base URL: {api.base_url}")
-                    st.write(f"Full Endpoint: {api.base_url}/api/v1/auth/register")
-                    st.write(f"Success: {success}")
-                    st.write(f"Response: {res}")
-
                 if success:
                     if res and res.get("username"):
+                        st.balloons()
                         st.success(f"🎉 Registered {res['username']} successfully!")
                         st.info("📧 A verification email has been sent to your email address.")
                         st.info("You can now login with your credentials.")
@@ -90,3 +84,89 @@ def register_ui(api: EnhancedAPIClient):
                         st.error("🔌 Cannot connect to the server. Please check if the backend is running.")
                     elif "not found" in detail.lower():
                         st.error("🌐 Endpoint not found. Please check the API URL configuration.")
+
+
+def forgot_password_ui(api: EnhancedAPIClient):
+    """Forgot password UI - request reset email"""
+    st.header("🔒 Reset Your Password")
+
+    st.info("Enter your email address and we'll send you a password reset link.")
+
+    email = st.text_input("📧 Email Address", placeholder="your.email@example.com")
+
+    if st.button("📨 Send Reset Link", type="primary", use_container_width=True):
+        if not email:
+            st.error("Please enter your email address")
+            return
+
+        with st.spinner("Sending reset link..."):
+            success, result = api.forgot_password(email)
+
+            if success:
+                st.success("✅ Check your email! If an account exists, you'll receive a password reset link shortly.")
+                st.info("💡 **Tip:** Check your spam folder if you don't see the email within a few minutes.")
+            else:
+                st.error(f"❌ {result.get('detail', 'Failed to send reset email')}")
+
+
+def reset_password_ui(api: EnhancedAPIClient):
+    """Reset password UI - handle token from URL and set new password"""
+    st.header("🔄 Set New Password")
+
+    # Check for reset token in URL
+    query_params = st.query_params
+    if 'token' not in query_params:
+        st.error("❌ Invalid or missing reset token")
+        st.info("Please use the password reset link from your email.")
+        return
+
+    token = query_params['token'][0] if isinstance(query_params['token'], list) else query_params['token']
+
+    # Validate token first
+    with st.spinner("Validating reset link..."):
+        success, validation_result = api.validate_reset_token(token)
+
+        if not success:
+            st.error("❌ Invalid or expired reset link")
+            st.info("Please request a new password reset link.")
+            return
+
+    # Password reset form
+    st.success("✅ Reset link validated! Please enter your new password.")
+
+    with st.form("reset_password_form"):
+        new_password = st.text_input("🔑 New Password", type="password",
+                                     help="Password must be at least 8 characters with uppercase, lowercase, and numbers")
+        confirm_password = st.text_input("✅ Confirm New Password", type="password")
+
+        submitted = st.form_submit_button("🔄 Reset Password", use_container_width=True)
+
+        if submitted:
+            if not new_password or not confirm_password:
+                st.error("Please fill in all fields")
+                return
+
+            if new_password != confirm_password:
+                st.error("Passwords do not match")
+                return
+
+            # Additional client-side validation
+            if len(new_password) < 8:
+                st.error("Password must be at least 8 characters long")
+                return
+
+            with st.spinner("Resetting password..."):
+                success, result = api.reset_password(token, new_password)
+
+                if success:
+                    st.success("🎉 Password reset successfully!")
+                    st.balloons()
+                    st.info("You can now login with your new password.")
+
+                    # Clear token from URL
+                    st.query_params.clear()
+
+                    if st.button("🔑 Go to Login", use_container_width=True):
+                        st.rerun()
+                else:
+                    st.error(f"❌ {result.get('detail', 'Failed to reset password')}")

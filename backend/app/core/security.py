@@ -26,12 +26,14 @@ class Permission(str, Enum):
 ROLE_PERMISSIONS = {
     "admin": {  Permission.SYSTEM_ADMIN,
                 Permission.USER_MANAGE,
+                Permission.REPORT_WRITE,
                 Permission.REPORT_MANAGE
               },
     "reviewer": {
         Permission.USER_READ,
         Permission.REPORT_READ,
         Permission.REPORT_REVIEW,
+        Permission.REPORT_WRITE,
         Permission.REPORT_MANAGE
     },
     "engineer": {

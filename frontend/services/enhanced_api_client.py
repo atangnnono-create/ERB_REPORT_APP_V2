@@ -121,7 +121,7 @@ class EnhancedAPIClient:
                 success, data = self._handle_response(response)
 
                 # If token expired and we can retry, refresh and try again
-                if not success and "token" in data.get('detail', '').lower() and attempt < max_retries:
+                if not success and isinstance(data, dict) and "token" in data.get('detail', '').lower() and attempt < max_retries:
                     if self._refresh_auth_token():
                         continue
 
@@ -230,6 +230,10 @@ class EnhancedAPIClient:
             json=report_data
         )
 
+    def get_report(self, report_id: int) -> Tuple[bool, Any]:
+        """Get a specific report by ID"""
+        return self._request_with_retry('GET', f'/api/v1/reports/{report_id}')
+
     def fetch_reports(self) -> Tuple[bool, List[Dict]]:
         """Fetch reports with pagination support"""
         success, data = self._request_with_retry('GET', '/api/v1/reports/')
@@ -318,6 +322,14 @@ class EnhancedAPIClient:
         """Get verification status for a user"""
         return self._request_with_retry('GET', f'/api/v1/auth/verification-status/{email}')
 
+    def verify_email(self, token: str) -> Tuple[bool, Any]:
+        """Verify email using token"""
+        return self._request_with_retry(
+            'POST',
+            '/api/v1/auth/verify-email',  # Remove ?token= from URL
+            json={"token": token}  # Send token in JSON body
+        )
+
     # -------- Audit Methods --------
     def get_audit_logs(
             self,
@@ -388,6 +400,30 @@ class EnhancedAPIClient:
             return False, {"detail": "Request timeout"}
         except Exception as e:
             return False, {"detail": str(e)}
+
+    # -------------- Password Reset Methods ---------------------------
+    def forgot_password(self, email: str) -> Tuple[bool, Any]:
+        """Request password reset"""
+        return self._request_with_retry(
+            'POST',
+            '/api/v1/auth/forgot-password',
+            json={"email": email}
+        )
+
+    def reset_password(self, token: str, new_password: str) -> Tuple[bool, Any]:
+        """Reset password with token"""
+        return self._request_with_retry(
+            'POST',
+            '/api/v1/auth/reset-password',
+            json={"token": token, "new_password": new_password}
+        )
+
+    def validate_reset_token(self, token: str) -> Tuple[bool, Any]:
+        """Validate reset token"""
+        return self._request_with_retry(
+            'GET',
+            f'/api/v1/auth/validate-reset-token?token={token}'
+        )
 
 
 # Global API client instance

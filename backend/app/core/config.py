@@ -50,7 +50,7 @@ class Settings(BaseSettings):
     smtp_username: Optional[str] = os.getenv("SMTP_USERNAME")
     smtp_password: Optional[str] = os.getenv("SMTP_PASSWORD")
     smtp_timeout: int = int(os.getenv("SMTP_TIMEOUT", "30"))
-    base_url: str = os.getenv("BASE_URL", "http://localhost:8000")
+    base_url: str = os.getenv("BASE_URL", "http://localhost:8501")
     app_name: str = os.getenv("APP_NAME", "Engineering Report Deck")
     from_email: str = os.getenv("FROM_EMAIL", "noreply@engineeringreports.com")
 
