@@ -73,18 +73,16 @@ class EnhancedAPIClient:
 
     def _handle_response(self, response: requests.Response) -> Tuple[bool, Any]:
         """Enhanced response handler with better error handling"""
-        ######################################################################
-        print(f"=== DEBUG _handle_response ===")
-        print(f"Response status: {response.status_code}")
-        print(f"Response content: {response.content}")
-        ######################################################################
+
         try:
             if response.status_code == 200:
                 data = response.json() if response.content else {"detail": "Success"}
-                ##########################################################
-                print(f"DEBUG: Success data type: {type(data)}, data: {data}")
-                #########################################################
+
                 return True, data
+            elif response.status_code == 204:  # ← FIXED: Handle 204 as SUCCESS
+                print("🎯 DEBUG: HTTP 204 - No Content (successful deletion)")
+                return True, {"detail": "Successfully deleted"}
+
             elif response.status_code == 401:
                 # Token expired or invalid
                 if self._refresh_auth_token():
@@ -270,7 +268,10 @@ class EnhancedAPIClient:
 
     def delete_report(self, report_id: int) -> Tuple[bool, Dict[str, Any]]:
         """Delete report with confirmation"""
-        return self._request_with_retry('DELETE', f'/api/v1/reports/{report_id}')
+        print(f"🔍 API CLIENT: delete_report called for report {report_id}")
+        result = self._request_with_retry('DELETE', f'/api/v1/reports/{report_id}')
+        print(f"🔍 API CLIENT: delete_report result: {result}")
+        return result
 
     def get_all_reports(self) -> Tuple[bool, Any]:
         """Get all reports (admin/reviewer only)"""
@@ -466,6 +467,29 @@ class EnhancedAPIClient:
             'GET',
             f'/api/v1/auth/validate-reset-token?token={token}'
         )
+
+##################### DATABASE STATISTICS##################################
+
+ # -------- Database & System Statistics --------
+    def get_database_stats(self) -> Tuple[bool, Any]:
+        """Get comprehensive database statistics (admin only)"""
+        return self._request_with_retry('GET', '/api/v1/admin/database/stats')
+
+    def get_database_health(self) -> Tuple[bool, Any]:
+        """Get database health and performance metrics"""
+        return self._request_with_retry('GET', '/api/v1/admin/database/health')
+
+    def get_system_metrics(self) -> Tuple[bool, Any]:
+        """Get system performance metrics"""
+        return self._request_with_retry('GET', '/api/v1/admin/system/metrics')
+
+    def get_database_tables(self) -> Tuple[bool, Any]:
+        """Get list of database tables with row counts"""
+        return self._request_with_retry('GET', '/api/v1/admin/database/tables')
+
+    def get_database_size(self) -> Tuple[bool, Any]:
+        """Get database storage metrics"""
+        return self._request_with_retry('GET', '/api/v1/admin/database/size')
 
 
 # Global API client instance

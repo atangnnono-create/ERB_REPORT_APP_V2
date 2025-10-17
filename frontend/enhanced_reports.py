@@ -1,7 +1,7 @@
 import streamlit as st
 import json
 import pandas as pd
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, time
 from typing import List, Dict
 from services.enhanced_api_client import EnhancedAPIClient
 from utilities.error_handling import ErrorHandler, LoadingState, with_loading
@@ -18,26 +18,40 @@ def enhanced_reports_ui(api: EnhancedAPIClient):
 
     st.title("📋 Enhanced Reports Management")
 
-    # Check user permissions
+    # Check user permissions - FIXED ROLE LOGIC
     user_role = st.session_state.get('user_role', '')
-    can_view_all = user_role in ['admin', 'reviewer']
-    can_manage = user_role in ['admin']
 
-    # Tabs for different views
-    if can_view_all:
+    # Define role permissions
+    can_view_all = user_role in ['admin', 'reviewer']  # Admin + Reviewer can see all reports
+    can_manage = user_role in ['admin']  # Only admins can do bulk operations
+
+    # Initialize tabs for all cases to avoid reference errors
+    tab1 = None
+    tab2 = None
+    tab3 = None
+
+    # Tabs for different views - FIXED TAB LOGIC
+    if can_manage:  # Admin - 3 tabs
         tab1, tab2, tab3 = st.tabs(["📊 My Reports", "👀 All Reports", "⚡ Bulk Operations"])
-    else:
-        tab1, tab2 = st.tabs(["📊 My Reports", "⚡ Bulk Operations"])
+    elif can_view_all:  # Reviewer - 2 tabs
+        tab1, tab2 = st.tabs(["📊 My Reports", "👀 All Reports"])
+    else:  # Regular users - 1 tab
+        tab1, = st.tabs(["📊 My Reports"])
 
+    # Always show My Reports tab
     with tab1:
         show_my_reports(api)
 
-    if can_view_all:
+    # Only show All Reports tab if user has permission and tab exists
+    if can_view_all and tab2 is not None:
         with tab2:
             show_all_reports(api)
 
-    with tab3 if can_view_all else tab2:
-        show_bulk_operations(api, can_manage)
+    # Only show Bulk Operations tab if admin and tab exists
+    if can_manage and tab3 is not None:
+        with tab3:
+            show_bulk_operations(api, can_manage)
+
 
 
 def show_my_reports(api: EnhancedAPIClient):
@@ -48,18 +62,20 @@ def show_my_reports(api: EnhancedAPIClient):
     col1, col2, col3 = st.columns([2, 1, 1])
 
     with col1:
-        search_term = st.text_input("🔍 Search reports...", placeholder="Search by title or content")
+        search_term = st.text_input("🔍 Search reports...", placeholder="Search by title or content", key="my_reports_search")
 
     with col2:
         status_filter = st.selectbox(
             "Status",
-            ["All", "draft", "submitted", "under_review", "approved", "rejected"]
+            ["All", "draft", "submitted", "under_review", "approved", "rejected"],
+            key="my_reports_status"
         )
 
     with col3:
         date_filter = st.selectbox(
             "Time Range",
-            ["All Time", "Last 7 days", "Last 30 days", "Last 90 days"]
+            ["All Time", "Last 7 days", "Last 30 days", "Last 90 days"],
+            key="my_reports_date"
         )
 
     # Fetch reports
@@ -74,12 +90,11 @@ def show_my_reports(api: EnhancedAPIClient):
         filtered_reports = apply_report_filters(reports, search_term, status_filter, date_filter)
 
         if not filtered_reports:
-            st.info("No reports found matching your criteria.Go to the Create Report page to start creating reports")
-
+            st.info("No reports found matching your criteria. Go to the Create Report page to start creating reports")
             return
 
-    # Display reports in an enhanced table
-    display_reports_table(filtered_reports, api, show_actions=True)
+    # Display reports in an enhanced table with unique context
+    display_reports_table(filtered_reports, api, show_actions=True, context="my_reports")
 
 
 def show_all_reports(api: EnhancedAPIClient):
@@ -90,23 +105,23 @@ def show_all_reports(api: EnhancedAPIClient):
     col1, col2, col3, col4 = st.columns([2, 1, 1, 1])
 
     with col1:
-        search_term = st.text_input("🔍 Search all reports...", key="admin_search")
+        search_term = st.text_input("🔍 Search all reports...", key="all_reports_search")
 
     with col2:
         status_filter = st.selectbox(
             "Status",
             ["All", "draft", "submitted", "under_review", "approved", "rejected"],
-            key="admin_status"
+            key="all_reports_status"
         )
 
     with col3:
-        user_filter = st.text_input("User", placeholder="Filter by username")
+        user_filter = st.text_input("User", placeholder="Filter by username", key="all_reports_user")
 
     with col4:
         date_filter = st.selectbox(
             "Time Range",
             ["All Time", "Today", "Last 7 days", "Last 30 days"],
-            key="admin_date"
+            key="all_reports_date"
         )
 
     # Fetch all reports
@@ -127,8 +142,8 @@ def show_all_reports(api: EnhancedAPIClient):
     # Statistics
     show_reports_statistics(filtered_reports)
 
-    # Display reports table
-    display_reports_table(filtered_reports, api, show_actions=True, show_user=True)
+    # Display reports table with unique context
+    display_reports_table(filtered_reports, api, show_actions=True, show_user=True, context="all_reports")
 
 
 def show_bulk_operations(api: EnhancedAPIClient, can_manage: bool):
@@ -183,7 +198,7 @@ def show_bulk_operations(api: EnhancedAPIClient, can_manage: bool):
     filtered_df = df[
         (df['status'].isin(status_select)) &
         (df['user'].isin(user_select))
-    ].copy()  # Use copy to avoid warnings
+        ].copy()
 
     if filtered_df.empty:
         st.info("No reports match the selected filters.")
@@ -208,7 +223,7 @@ def show_bulk_operations(api: EnhancedAPIClient, can_manage: bool):
                     label_visibility="collapsed"
                 )
                 if selected:
-                    selected_indices.append(idx)  # Now idx is 0, 1, 2, ... matching iloc positions
+                    selected_indices.append(idx)
             with col2:
                 st.write(f"**{row['title']}**")
             with col3:
@@ -264,6 +279,8 @@ def show_bulk_operations(api: EnhancedAPIClient, can_manage: bool):
         with col2:
             if st.button("📥 Export Selected", use_container_width=True):
                 bulk_export_reports(selected_reports.to_dict('records'))
+
+
 def apply_report_filters(reports: List[Dict], search_term: str, status_filter: str,
                          date_filter: str, user_filter: str = None) -> List[Dict]:
     """Apply filters to reports list"""
@@ -297,16 +314,15 @@ def apply_report_filters(reports: List[Dict], search_term: str, status_filter: s
         elif date_filter == "Today":
             cutoff = now.replace(hour=0, minute=0, second=0, microsecond=0)
         else:
-            cutoff = now - timedelta(days=1)  # Default to yesterday
+            cutoff = now - timedelta(days=1)
 
         filtered = [r for r in filtered if
                     datetime.fromisoformat(r.get('created_at', '2000-01-01').replace('Z', '')) >= cutoff]
 
     return filtered
 
-
 def display_reports_table(reports: List[Dict], api: EnhancedAPIClient,
-                          show_actions: bool = True, show_user: bool = False):
+                          show_actions: bool = True, show_user: bool = False, context: str = ""):
     """Display reports in an enhanced table format"""
 
     # Create DataFrame for better display
@@ -349,94 +365,70 @@ def display_reports_table(reports: List[Dict], api: EnhancedAPIClient,
         selected_id = st.selectbox(
             "Select report for actions:",
             options=[r['id'] for r in reports],
-            format_func=lambda x: f"ID {x}: {next(r['title'] for r in reports if r['id'] == x)}"
+            format_func=lambda x: f"ID {x}: {next(r['title'] for r in reports if r['id'] == x)}",
+            key=f"{context}_report_select"  # ✅ UNIQUE KEY for selectbox
         )
 
         if selected_id:
-            show_report_actions(selected_id, reports, api)
+            show_report_actions(selected_id, reports, api, context)  # ✅ PASS CONTEXT
 
 
-def show_report_actions(report_id: int, reports: List[Dict], api: EnhancedAPIClient):
-    """Show actions for a specific report"""
+def show_report_actions(report_id: int, reports: List[Dict], api: EnhancedAPIClient, context: str = ""):
+    """Show actions for a specific report - WITH UNIQUE KEYS PER CONTEXT"""
     report = next((r for r in reports if r['id'] == report_id), None)
     if not report:
         return
 
-    import time
-    unique_suffix = str(hash(f"{report_id}_{time.time()}"))
+    st.write("### 🛠️ Report Actions")
+    st.write("---")
 
-    # Add extra column for Continue Editing - now 5 columns
-    col1, col2, col3, col4, col5 = st.columns(5)
+    # Create action buttons with unique keys using context
+    col1, col2, col3 = st.columns([1, 1, 1])
 
     with col1:
+        # Only show Submit button for draft reports
         current_status = report.get('status', 'draft')
         if current_status == 'draft':
-            if st.button("📤 Submit for Review", key=f"submit_{unique_suffix}", use_container_width=True):
-                # Debug: Print everything we know
-                st.write("## 🐛 DEBUG - Submit for Review")
-                st.write(f"**Report ID:** {report_id}")
-                st.write(f"**Report Title:** {report.get('title')}")
-                st.write(f"**Current Status:** {current_status}")
-                st.write(f"**User ID:** {st.session_state.get('user_id')}")
-                st.write(f"**User Role:** {st.session_state.get('user_role')}")
-                st.write(f"**Report Owner ID:** {report.get('owner_id')}")
-                st.write(f"**API Base URL:** {api.base_url}")
+            st.write("**Submit for Review**")
+            if st.button("📤 Submit", key=f"{context}_submit_{report_id}", use_container_width=True):
+                with st.spinner("🔄 Submitting report for review..."):
+                    success, result = api.submit_report_for_review(report_id)
 
-                # Test if API method exists and is callable
-                st.write("### API Method Check")
-                if hasattr(api, 'submit_report_for_review'):
-                    st.success("✅ api.submit_report_for_review method exists")
-                    try:
-                        # Call the method and capture everything
-                        with LoadingState("Calling API..."):
-                            st.write("### Making API Call...")
-                            success, result = api.submit_report_for_review(report_id)
+                    if success:
+                        # Update the report status in the local list for immediate UI update
+                        st.balloons()
+                        report['status'] = 'submitted'
+                        # Also update submitted_at timestamp if available in response
+                        if 'submitted_at' in result:
+                            report['submitted_at'] = result['submitted_at']
 
-                            st.write("### API Response:")
-                            st.write(f"**Success:** {success}")
-                            st.write(f"**Result Type:** {type(result)}")
-                            st.write(f"**Result:** {result}")
+                        st.success("✅ Report submitted for review!")
+                        st.rerun()
+                    else:
+                        error_msg = result.get('detail', 'Unknown error')
+                        st.error(f"❌ Submit failed: {error_msg}")
+        else:
+            # Show status for non-draft reports
+            status_display = current_status.replace('_', ' ').title()
+            st.write(f"**Current Status:** {status_display}")
+            if current_status == 'submitted':
+                st.info("📋 Report is under review")
+            elif current_status == 'approved':
+                st.success("✅ Report approved")
+            elif current_status == 'rejected':
+                st.error("❌ Report rejected")
+            elif current_status == 'under_review':
+                st.warning("🔍 Report is being reviewed")
 
-                            if success:
-                                st.success("🎉 API Call SUCCESSFUL!")
-                                st.balloons()
-                                # Wait a moment to see the success
-                                import time
-                                time.sleep(2)
-                                st.rerun()
-                            else:
-                                st.error("💥 API Call FAILED!")
-                                # Show detailed error
-                                if isinstance(result, dict):
-                                    st.write("**Error Details:**")
-                                    for key, value in result.items():
-                                        st.write(f"- {key}: {value}")
-                                else:
-                                    st.write(f"**Raw Error:** {result}")
-                    except Exception as e:
-                        st.error(f"🚨 EXCEPTION during API call: {str(e)}")
-                        st.write("**Exception Type:**", type(e).__name__)
-                        import traceback
-                        st.write("**Traceback:**")
-                        st.code(traceback.format_exc())
-                else:
-                    st.error("❌ api.submit_report_for_review method NOT FOUND")
     with col2:
-        # Download - FIXED VERSION
+        st.write("**Download**")
         try:
-            # Transform backend format to frontend format
             role = determine_role_from_report(report)
+            frontend_format = {role: {}}
 
-            # Build the frontend-compatible structure
-            frontend_format = {
-                role: {}
-            }
-
-            # Transform competencies
             for competency in report.get('competencies', []):
                 key = competency['competency_key']
                 response_text = competency['user_response'] or ""
-
                 frontend_format[role][key] = {
                     "title": competency['competency_title'],
                     "response": response_text,
@@ -446,41 +438,115 @@ def show_report_actions(report_id: int, reports: List[Dict], api: EnhancedAPICli
             json_str = json.dumps(frontend_format, indent=2, ensure_ascii=False)
 
             st.download_button(
-                "📥 Download JSON",
+                "📥 Download",
                 data=json_str,
                 file_name=f"report_{report['id']}_{datetime.now().strftime('%Y%m%d')}.json",
                 mime="application/json",
-                key=f"download_{unique_suffix}",
+                key=f"{context}_download_{report_id}",  # ✅ UNIQUE KEY
                 use_container_width=True
             )
-
         except Exception as e:
-            st.error(f"Error preparing download: {str(e)}")
+            st.error(f"Download error: {str(e)}")
 
     with col3:
-        # Delete
-        if st.button("🗑️ Delete", key=f"delete_{unique_suffix}", use_container_width=True):
-            if st.session_state.get('user_role') in ['admin'] or report.get('owner_id') == st.session_state.get(
-                    'user_id'):
-                with LoadingState("Deleting report..."):
+        st.write("**Delete Report**")
+        # Only allow deletion for draft reports or admins
+        current_status = report.get('status', 'draft')
+        can_delete = (
+                st.session_state.get('user_role') in ['admin'] or
+                (report.get('owner_id') == st.session_state.get('user_id') and current_status == 'draft')
+        )
+
+        if can_delete:
+            if st.button("🗑️ Delete", key=f"{context}_delete_{report_id}", use_container_width=True, type="secondary"):
+                with st.spinner("🔄 Deleting report..."):
                     success, result = api.delete_report(report_id)
+
                     if success:
-                        st.success("Report deleted!")
+                        st.balloons()
                         st.rerun()
                     else:
-                        ErrorHandler.show_error(f"Failed to delete: {result.get('detail', 'Unknown error')}")
-            else:
-                ErrorHandler.show_error("You don't have permission to delete this report")
+                        st.error(f"❌ Delete failed: {result.get('detail', 'Unknown error')}")
+        else:
+            if current_status != 'draft':
+                st.info("🔒 Submitted reports cannot be deleted")
 
-    with col4:
-        # View details
-        if st.button("👁️ View Details", key=f"view_{unique_suffix}", use_container_width=True):
-            show_report_details(report)
+    # Show report details section
+    st.write("---")
+    st.subheader("📋 Report Details")
+
+    # Check current view state
+    is_full_details = st.session_state.get(f'{context}_show_details_{report_id}', False)
+
+    # SINGLE TOGGLE BUTTON - placed prominently above the details
+    toggle_col1, toggle_col2 = st.columns([1, 4])
+
+    with toggle_col1:
+        if is_full_details:
+            button_label = "📖 Show Basic Details"
+            button_type = "secondary"
+        else:
+            button_label = "📖 Show Full Details"
+            button_type = "primary"
+
+        if st.button(button_label, key=f"{context}_toggle_{report_id}",
+                     use_container_width=True, type=button_type):
+            # Toggle the state
+            st.session_state[f'{context}_show_details_{report_id}'] = not is_full_details
+            st.rerun()
+
+    with toggle_col2:
+        # Show current view status
+        if is_full_details:
+            st.success("🔍 **Full Details View** - Complete report information")
+        else:
+            st.info("📊 **Basic Details View** - Summary information")
+
+    # Display the appropriate view based on toggle state
+    if is_full_details:
+        show_report_details(report, context)
+    else:
+        show_basic_report_details(report, context)
 
 
-def show_report_details(report: Dict):
-    """Show detailed report information"""
-    with st.expander(f"📋 Report Details: {report['title']}", expanded=True):
+def show_basic_report_details(report: Dict, context: str = ""):
+    """Show basic report information"""
+    col1, col2 = st.columns(2)
+
+    with col1:
+        st.write("**Basic Information**")
+        st.write(f"**ID:** {report['id']}")
+        st.write(f"**Title:** {report['title']}")
+        st.write(f"**Status:** {report.get('status', 'draft').title()}")
+        st.write(f"**Created:** {format_date(report.get('created_at'))}")
+
+    with col2:
+        st.write("**Statistics**")
+        st.write(f"**Word Count:** {len(report.get('content', '').split())}")
+        st.write(f"**Competencies:** {len(report.get('competencies', []))}")
+
+        author_name = report.get('owner_full_name') or report.get('owner_username', 'Unknown')
+        st.write(f"**Author:** {author_name}")
+        st.write(f"**Email:** {report.get('owner_email', 'No email')}")
+
+    # Quick content preview
+    st.write("**Content Preview:**")
+    content = report.get('content', 'No content available')
+    preview_length = 300
+    if len(content) > preview_length:
+        preview = content[:preview_length] + "..."
+    else:
+        preview = content
+
+    st.text_area("Content Preview", value=preview, height=100, disabled=True,
+                 key=f"{context}_preview_{report['id']}", label_visibility="collapsed")
+
+
+def show_report_details(report: Dict, context: str = ""):
+    """Show detailed report information (enhanced version)"""
+    # NO TOGGLE BUTTON HERE - only one toggle in the main actions area
+
+    with st.expander(f"📋 Detailed Report: {report['title']}", expanded=True):
         col1, col2 = st.columns(2)
 
         with col1:
@@ -492,23 +558,31 @@ def show_report_details(report: Dict):
             st.write(f"**Reviewed:** {format_date(report.get('reviewed_at'))}")
 
         with col2:
+            st.write("**Author Information**")
+            author_name = report.get('owner_full_name') or report.get('owner_username', 'Unknown')
+            st.write(f"**Author:** {author_name}")
+            st.write(f"**Email:** {report.get('owner_email', 'No email')}")
+            st.write(f"**Username:** {report.get('owner_username', 'N/A')}")
+
             st.write("**Statistics**")
             st.write(f"**Word Count:** {len(report.get('content', '').split())}")
             st.write(f"**Competencies:** {len(report.get('competencies', []))}")
-            st.write(f"**Owner:** {report.get('owner_username', 'N/A')}")
 
             if report.get('review_notes'):
                 st.write("**Review Notes:**")
                 st.info(report['review_notes'])
 
-        # Content preview
-        st.write("**Content Preview:**")
-        content = report.get('content', 'No content')
-        if len(content) > 500:
-            st.text_area("", value=content[:500] + "...", height=150, disabled=True)
-        else:
-            st.text_area("", value=content, height=150, disabled=True)
+        # Full content
+        st.write("**Full Content:**")
+        content = report.get('content', 'No content available')
+        st.text_area("", value=content, height=200, disabled=True, key=f"{context}_full_content_{report['id']}")
 
+        # Competencies section
+        if report.get('competencies'):
+            st.write("**Competencies:**")
+            for comp in report['competencies']:
+                with st.expander(f"🔧 {comp.get('competency_title', 'Competency')}"):
+                    st.write(f"**Response:** {comp.get('user_response', 'No response')}")
 
 def show_reports_statistics(reports: List[Dict]):
     """Display reports statistics"""
@@ -566,6 +640,7 @@ def bulk_update_status(api: EnhancedAPIClient, report_ids: List[int], new_status
             success, result = api.review_report(report_id, new_status, "Bulk status update")
 
         if success:
+            st.balloons()
             success_count += 1
         else:
             failed_reports.append((report_id, result.get('detail', 'Unknown error')))
@@ -595,21 +670,29 @@ def bulk_delete_reports(api: EnhancedAPIClient, report_ids: List[int]):
     for report_id in report_ids:
         success, result = api.delete_report(report_id)
         if success:
+            st.balloons()
             success_count += 1
         else:
             failed_reports.append((report_id, result.get('detail', 'Unknown error')))
 
+    # Store results in session state to persist across rerun
     if success_count == len(report_ids):
-        ErrorHandler.show_success(f"✅ Successfully deleted {success_count} reports")
+        st.session_state['bulk_delete_success'] = {
+            'count': success_count,
+            'total': len(report_ids),
+            'show_balloons': True
+        }
+    elif success_count > 0:
+        st.session_state['bulk_delete_success'] = {
+            'count': success_count,
+            'total': len(report_ids),
+            'show_balloons': False,
+            'failed': failed_reports
+        }
     else:
-        ErrorHandler.show_warning(f"Deleted {success_count}/{len(report_ids)} reports")
-        if failed_reports:
-            with st.expander("Failed deletions"):
-                for report_id, error in failed_reports:
-                    st.write(f"Report {report_id}: {error}")
+        st.session_state['bulk_delete_error'] = "❌ Failed to delete any reports"
 
     st.rerun()
-
 
 def bulk_export_reports(reports: List[Dict]):
     """Bulk export selected reports in create_report.py compatible format"""

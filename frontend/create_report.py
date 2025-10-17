@@ -16,68 +16,126 @@ api = EnhancedAPIClient()
 # ========== ENHANCED STATE MANAGER INTEGRATION ==========
 def setup_auto_save():
     """Initialize auto-save functionality with state manager"""
-    if "auto_save_interval" not in st.session_state:
-        st.session_state.auto_save_interval = 30  # seconds
-    if "last_save_time" not in st.session_state:
-        st.session_state.last_save_time = datetime.now()
-    if "auto_save_enabled" not in st.session_state:
-        st.session_state.auto_save_enabled = True
+    defaults = {
+        "auto_save_interval": 30,  # seconds
+        "last_save_time": datetime.now(),
+        "auto_save_enabled": True,
+        "auto_save_attempts": 0,
+        "last_save_successful": True
+    }
+
+    for key, value in defaults.items():
+        if key not in st.session_state:
+            st.session_state[key] = value
 
     # Register key persistence with state manager
-    state_manager.persist_key("auto_save_data")
-    state_manager.persist_key("selected_role")
-    state_manager.persist_key("responses")
-    state_manager.persist_key("current_section")
-    state_manager.persist_key("last_role")
+    persistent_keys = [
+        "auto_save_data", "selected_role", "responses",
+        "current_section", "last_role", "report_status"
+    ]
+    for key in persistent_keys:
+        state_manager.persist_key(key)
 
 
-def auto_save_check():
-    """Check if it's time to auto-save"""
-    if not st.session_state.auto_save_enabled:
-        return
+def auto_save_check(force_save=False):
+    """Check if it's time to auto-save with improved logic"""
+    if not st.session_state.auto_save_enabled and not force_save:
+        return False
 
     current_time = datetime.now()
     time_diff = (current_time - st.session_state.last_save_time).total_seconds()
 
-    if time_diff >= st.session_state.auto_save_interval:
-        save_current_progress()
-        st.session_state.last_save_time = current_time
-        st.toast("💾 Progress auto-saved", icon="✅")
+    # Save if forced OR interval elapsed OR this is first significant change
+    should_save = (force_save or
+                   time_diff >= st.session_state.auto_save_interval or
+                   st.session_state.auto_save_attempts == 0)
+
+    if should_save:
+        success = save_current_progress()
+        if success:
+            st.session_state.last_save_time = current_time
+            st.session_state.last_save_successful = True
+            if force_save:
+                st.toast("💾 Progress saved successfully!", icon="✅")
+            else:
+                # Only show auto-save toast if not forced and not first attempt
+                if st.session_state.auto_save_attempts > 0:
+                    st.toast("💾 Progress auto-saved", icon="✅")
+        else:
+            st.session_state.last_save_successful = False
+            st.toast("⚠️ Failed to save progress", icon="❌")
+
+        st.session_state.auto_save_attempts += 1
+        return success
+
+    return False
 
 
 def save_current_progress():
-    """Save current report progress using state manager"""
+    """Save current report progress with enhanced error handling and backup"""
     try:
-        if "responses" in st.session_state and "selected_role" in st.session_state:
-            # Ensure responses for current role exists and is a dictionary
-            current_role_responses = st.session_state.responses.get(st.session_state.selected_role, {})
-            if not isinstance(current_role_responses, dict):
-                current_role_responses = {}
+        if "responses" not in st.session_state or "selected_role" not in st.session_state:
+            return False
 
-            progress_data = {
-                "role": st.session_state.selected_role,
-                "responses": current_role_responses,
-                "current_section": st.session_state.get("current_section", 0),
-                "last_modified": datetime.now().isoformat(),
-                "version": "2.0"
-            }
+        current_role = st.session_state.selected_role
+        current_role_responses = st.session_state.responses.get(current_role, {})
 
-            # Use state manager for persistence
+        if not isinstance(current_role_responses, dict):
+            current_role_responses = {}
+
+        # Create comprehensive progress data
+        progress_data = {
+            "role": current_role,
+            "responses": current_role_responses,
+            "current_section": st.session_state.get("current_section", 0),
+            "last_modified": datetime.now().isoformat(),
+            "version": "2.1",
+            "total_responses": len([r for r in current_role_responses.values()
+                                    if isinstance(r, dict) and r.get("response", "").strip()]),
+            "total_word_count": sum(len(r.get("response", "").split())
+                                    for r in current_role_responses.values()
+                                    if isinstance(r, dict))
+        }
+
+        # Primary save: state manager
+        try:
             state_manager.set_state("auto_save_data", progress_data, persist=True)
-            state_manager.set_state("selected_role", st.session_state.selected_role, persist=True)
+            state_manager.set_state("selected_role", current_role, persist=True)
             state_manager.set_state("responses", st.session_state.responses, persist=True)
             state_manager.set_state("current_section", st.session_state.current_section, persist=True)
+        except Exception as state_error:
+            print(f"State manager save failed: {state_error}")
+            return False
+
+        # Local backup as fallback
+        if st.session_state.get("enable_local_backup", True):
+            try:
+                backup_key = f"auto_save_backup_{current_role}"
+                st.session_state[backup_key] = progress_data
+            except Exception as backup_error:
+                print(f"Local backup failed: {backup_error}")
+
+        return True
 
     except Exception as e:
         print(f"Auto-save failed: {e}")
+        return False
 
 
 def load_auto_saved_progress():
-    """Load auto-saved progress using state manager"""
+    """Load auto-saved progress with fallback to local backup"""
     try:
+        # Try state manager first
         saved_data = state_manager.get_state("auto_save_data")
-        if saved_data and saved_data.get("version") == "2.0":
+        if saved_data and saved_data.get("version") in ["2.0", "2.1"]:
             return saved_data
+
+        # Fallback to local backup
+        current_role = st.session_state.get("selected_role", "Engineer")
+        backup_key = f"auto_save_backup_{current_role}"
+        if backup_key in st.session_state:
+            return st.session_state[backup_key]
+
     except Exception as e:
         print(f"Failed to load auto-save: {e}")
 
@@ -108,39 +166,66 @@ def validate_report_data(report_data: dict) -> Tuple[bool, str]:
 
 
 def show_auto_save_controls():
-    """Display auto-save controls with state manager information"""
+    """Display enhanced auto-save controls with status information"""
     st.sidebar.markdown("---")
     st.sidebar.subheader("💾 Auto-Save & State")
 
-    auto_save = st.sidebar.toggle("Enable Auto-Save",
-                                  value=st.session_state.get("auto_save_enabled", True),
-                                  key="auto_save_toggle")
+    # Auto-save toggle with status
+    auto_save = st.sidebar.toggle(
+        "Enable Auto-Save",
+        value=st.session_state.get("auto_save_enabled", True),
+        key="auto_save_toggle",
+        help="Automatically save your progress every 30 seconds"
+    )
     st.session_state.auto_save_enabled = auto_save
 
-    interval = st.sidebar.slider("Save Interval (seconds)",
-                                 min_value=10, max_value=120,
-                                 value=st.session_state.get("auto_save_interval", 30),
-                                 key="auto_save_interval_slider")
+    # Interval control
+    interval = st.sidebar.slider(
+        "Save Interval (seconds)",
+        min_value=15,
+        max_value=120,
+        value=st.session_state.get("auto_save_interval", 30),
+        key="auto_save_interval_slider",
+        disabled=not auto_save
+    )
     st.session_state.auto_save_interval = interval
 
-    if st.sidebar.button("💾 Save Now", use_container_width=True):
-        save_current_progress()
-        st.sidebar.success("Progress saved to persistent storage!")
+    # Status indicator
+    if st.session_state.get("last_save_successful", True):
+        st.sidebar.success("✅ All changes saved")
+    else:
+        st.sidebar.error("❌ Save failed - check connection")
 
-    if st.sidebar.button("🔄 Load Last Save", use_container_width=True):
-        saved_data = load_auto_saved_progress()
-        if saved_data:
-            st.session_state.selected_role = saved_data.get("role", "Engineer")
-            st.session_state.responses[saved_data["role"]] = saved_data.get("responses", {})
-            st.session_state.current_section = saved_data.get("current_section", 0)
-            state_manager.set_state("selected_role", st.session_state.selected_role, persist=True)
-            state_manager.set_state("responses", st.session_state.responses, persist=True)
-            state_manager.set_state("current_section", st.session_state.current_section, persist=True)
-            st.sidebar.success("Progress restored!")
-            st.rerun()
-        else:
-            st.sidebar.warning("No saved progress found")
+    # Manual controls
+    col1, col2 = st.sidebar.columns(2)
 
+    with col1:
+        if st.button("💾 Save Now", use_container_width=True):
+            if auto_save_check(force_save=True):
+                st.sidebar.success("Progress saved!")
+            else:
+                st.sidebar.error("Save failed!")
+
+    with col2:
+        if st.button("🔄 Load Last Save", use_container_width=True):
+            saved_data = load_auto_saved_progress()
+            if saved_data:
+                st.session_state.selected_role = saved_data.get("role", "Engineer")
+                st.session_state.responses[saved_data["role"]] = saved_data.get("responses", {})
+                st.session_state.current_section = saved_data.get("current_section", 0)
+                state_manager.set_state("selected_role", st.session_state.selected_role, persist=True)
+                state_manager.set_state("responses", st.session_state.responses, persist=True)
+                state_manager.set_state("current_section", st.session_state.current_section, persist=True)
+                st.sidebar.success("Progress restored!")
+                st.rerun()
+            else:
+                st.sidebar.warning("No saved progress found")
+
+    # Save statistics
+    if st.session_state.get("auto_save_attempts", 0) > 0:
+        st.sidebar.caption(
+            f"🕐 Last save: {st.session_state.get('last_save_time', datetime.now()).strftime('%H:%M:%S')}")
+        st.sidebar.caption(f"📊 Save attempts: {st.session_state.get('auto_save_attempts', 0)}")
 
 def enhanced_submit_report(selected_role: str, competency_sections: dict):
     """Enhanced report submission with state manager cleanup"""
@@ -186,6 +271,7 @@ def enhanced_submit_report(selected_role: str, competency_sections: dict):
         success, result = api.create_report(payload)
 
         if success and "id" in result:
+            st.balloons()
             ErrorHandler.show_success(f"Report submitted successfully! (ID: {result['id']})")
 
             if report_status != 'draft':
@@ -268,8 +354,7 @@ def enhanced_role_selection():
 
 
 def enhanced_response_handler(selected_role: str, current_key: str, section: dict):
-    """Handle user responses with automatic state persistence"""
-
+    """Handle user responses with improved auto-save triggering"""
     # FIX: Ensure responses for current role exists and is a dict
     if selected_role not in st.session_state.responses or not isinstance(st.session_state.responses[selected_role],
                                                                          dict):
@@ -284,17 +369,22 @@ def enhanced_response_handler(selected_role: str, current_key: str, section: dic
         value=current_text,
         height=300,
         key=f"text_area_{current_key}",
+        on_change=lambda: auto_save_check(force_save=True)  # Save on text change
     )
 
     response_data = {
         "title": section["title"],
         "response": user_input,
         "word_count": len(user_input.split()) if user_input else 0,
+        "last_modified": datetime.now().isoformat()
     }
 
     st.session_state.responses[selected_role][current_key] = response_data
     state_manager.set_state("responses", st.session_state.responses, persist=True)
-    auto_save_check()
+
+    # Auto-save on significant changes (new response or major edits)
+    if user_input != current_text and len(user_input) > 10:
+        auto_save_check(force_save=True)
 
     return user_input
 
@@ -305,6 +395,7 @@ def enhanced_navigation(total_sections: int):
 
     with col1:
         if st.button("⬅️ Previous") and st.session_state.current_section > 0:
+            auto_save_check(force_save=True)
             st.session_state.current_section -= 1
             state_manager.set_state("current_section", st.session_state.current_section, persist=True)
             clear_competency_suggestions()
@@ -312,6 +403,7 @@ def enhanced_navigation(total_sections: int):
 
     with col3:
         if st.button("Next ➡️") and st.session_state.current_section < total_sections - 1:
+            auto_save_check(force_save=True)
             st.session_state.current_section += 1
             state_manager.set_state("current_section", st.session_state.current_section, persist=True)
             clear_competency_suggestions()
@@ -526,7 +618,7 @@ def create_report_ui():
     # Action buttons
     col1, col2 = st.columns(2)
     with col1:
-        if st.button("🚀 Submit Report to Backend", key="enhanced_submit"):
+        if st.button("🚀 Submit Report", key="enhanced_submit"):
             enhanced_submit_report(selected_role, competency_sections)
 
     with col2:

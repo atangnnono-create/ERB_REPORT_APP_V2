@@ -27,7 +27,8 @@ ROLE_PERMISSIONS = {
     "admin": {  Permission.SYSTEM_ADMIN,
                 Permission.USER_MANAGE,
                 Permission.REPORT_WRITE,
-                Permission.REPORT_MANAGE
+                Permission.REPORT_MANAGE,
+                Permission.REPORT_REVIEW,
               },
     "reviewer": {
         Permission.USER_READ,

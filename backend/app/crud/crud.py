@@ -83,12 +83,26 @@ def update_user(db: Session, user_id: int, user_update: schemas.UserUpdate):
 
     try:
         update_data = user_update.dict(exclude_unset=True)
+
+        # ✅ NEW: Check for duplicate email (mirroring create_user pattern)
+        if 'email' in update_data and update_data['email']:
+            # Check if email is being changed to a different value
+            if update_data['email'] != db_user.email:
+                existing_user = get_user_by_email(db, update_data['email'])
+                if existing_user:
+                    raise_business_rule("Email already registered", "EMAIL_EXISTS")
+
+        # Update fields
         for field, value in update_data.items():
             setattr(db_user, field, value)
 
         db.commit()
         db.refresh(db_user)
         return db_user
+
+    except BusinessRuleException:
+        # Re-raise business rule exceptions (like duplicate email)
+        raise
     except Exception as e:
         db.rollback()
         logger.error(f"Error updating user {user_id}: {e}")
@@ -98,7 +112,8 @@ def update_user(db: Session, user_id: int, user_update: schemas.UserUpdate):
 def get_reports(db: Session, user_id: int):
     """Get user's reports with competencies eagerly loaded"""
     return db.query(models.Report).options(
-        joinedload(models.Report.competencies)
+        joinedload(models.Report.competencies),
+        joinedload(models.Report.owner)
     ).filter(models.Report.owner_id == user_id).all()
 
 def get_all_reports(db: Session):

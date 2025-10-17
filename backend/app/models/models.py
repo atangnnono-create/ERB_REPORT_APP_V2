@@ -58,6 +58,18 @@ class Report(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
+    @property
+    def owner_username(self):
+        return self.owner.username if self.owner else None
+
+    @property
+    def owner_full_name(self):
+        return self.owner.full_name if self.owner else None
+
+    @property
+    def owner_email(self):
+        return self.owner.email if self.owner else None
+
 class ReportVersion(Base):
     __tablename__ = "report_versions"
     id = Column(Integer, primary_key=True)

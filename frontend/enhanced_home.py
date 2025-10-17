@@ -1,11 +1,15 @@
 import streamlit as st
-
+from datetime import datetime
+from typing import List, Dict
 import enhanced_admin_dashboard
 from services.enhanced_api_client import EnhancedAPIClient
-import profile, about, contact, create_report, auth, enhanced_reports
-from components.admin import admin
+import about, contact, create_report, auth, enhanced_reports, user_profile
+from enhanced_admin_dashboard import enhanced_admin_dashboard
 from frontend import verification
 from utilities.error_handling import ErrorHandler, LoadingState, display_network_status
+import functools
+
+
 
 # Initialize enhanced API client
 if "api" not in st.session_state:
@@ -19,7 +23,7 @@ def get_user_permissions(role: str) -> set:
     """Enhanced permission system"""
     permissions = {
         "admin": {"manage_users", "view_all_reports", "system_settings", "audit_access", "export_data", "ai_features"},
-        "reviewer": {"review_reports", "view_all_reports", "export_reports", "ai_features"},
+        "reviewer": {"review_reports", "export_reports", "ai_features"},
         "engineer": {"create_reports", "view_own_reports", "export_reports", "ai_feedback", "ai_features"},
         "technologist": {"create_reports", "view_own_reports", "export_reports", "ai_feedback", "ai_features"},
         "technician": {"create_reports", "view_own_reports", "export_reports", "ai_feedback", "ai_features"},
@@ -42,38 +46,14 @@ def initialize_session_state():
         "is_active": True,
         "debug_mode": False,
         "last_activity": None,
-        "ai_context": {}
+        "ai_context": {},
+        "current_review_id": None,  # Add this
+        "review_data_loaded": False  # Add loading state tracking
     }
 
     for key, value in defaults.items():
         if key not in st.session_state:
             st.session_state[key] = value
-
-
-def show_quick_actions(permissions):
-    """Display quick action buttons based on permissions"""
-    st.sidebar.markdown("---")
-    st.sidebar.subheader("🚀 Quick Actions")
-
-    if "create_reports" in permissions:
-        if st.sidebar.button("📝 New Report", use_container_width=True):
-            st.session_state.current_page = "Create Report"
-            st.rerun()
-
-    if "view_own_reports" in permissions:
-        if st.sidebar.button("📊 My Reports", use_container_width=True):
-            st.session_state.current_page = "Reports"
-            st.rerun()
-
-    if "review_reports" in permissions:
-        if st.sidebar.button("👀 Review Queue", use_container_width=True):
-            st.session_state.current_page = "Review Dashboard"
-            st.rerun()
-
-    if "ai_features" in permissions:
-        if st.sidebar.button("🤖 AI Assistant", use_container_width=True):
-            st.session_state.current_page = "🤖 AI Assistant"
-            st.rerun()
 
 
 def show_user_profile_sidebar():
@@ -142,6 +122,228 @@ def get_current_responses_for_ai():
     except Exception as e:
         print(f"Error getting responses for AI: {e}")
         return {}
+
+########################## REPORT REVIEW ###################################
+def review_dashboard():
+    """Review dashboard for reviewers - using the review queue from admin dashboard"""
+    st.title("👀 Review Dashboard")
+
+    # Permission check for reviewers
+    user_role = st.session_state.get('user_role', '')
+    if user_role not in ['admin', 'reviewer']:
+        ErrorHandler.show_error("🔒 Access denied. Reviewer privileges required.")
+        return
+
+    # Create a minimal version of the review functionality from admin dashboard
+    _show_reviewer_dashboard()
+
+
+@functools.lru_cache(maxsize=1)
+def get_cached_reports_for_review(api, user_id):
+    """Cache reports for review to prevent repeated API calls"""
+    return api.get_reports_for_review()
+
+
+def _show_reviewer_dashboard():
+    """Show the review queue interface for reviewers"""
+    st.subheader("📝 Reports Pending Review")
+
+    # Load reports for review with caching
+    with LoadingState("Loading reports for review..."):
+        # Use cached version if available
+        cache_key = f"reports_for_review_{st.session_state.user_id}"
+        if cache_key not in st.session_state:
+            success, reports = st.session_state.api.get_reports_for_review()
+            if success:
+                st.session_state[cache_key] = reports
+            else:
+                st.session_state[cache_key] = []
+
+        reports = st.session_state[cache_key]
+
+        if not reports:
+            st.success("🎉 No reports pending review!")
+            return
+
+        # Filter pending review reports
+        pending_review = [r for r in reports if r.get('status') in ['submitted', 'under_review']]
+
+        if not pending_review:
+            st.success("✅ All reports have been reviewed!")
+            return
+
+        # Check if we're currently reviewing a report - use a container to prevent rerun
+        review_container = st.container()
+
+        with review_container:
+            if 'current_review_id' in st.session_state and st.session_state.current_review_id:
+                _show_review_interface(st.session_state.current_review_id, pending_review)
+                return
+
+        # Display review queue outside the container to prevent unnecessary reruns
+        st.write(f"**{len(pending_review)} reports awaiting your review:**")
+
+        # Use forms for better button handling
+        for report in pending_review:
+            with st.expander(f"📝 {report['title']} (ID: {report['id']})", expanded=False):
+                col1, col2 = st.columns([2, 1])
+
+                with col1:
+                    st.write(f"**Author:** {report.get('owner_full_name', 'Unknown')}")
+                    st.write(f"**Username:** {report.get('owner_username', 'N/A')}")
+                    st.write(f"**Email:** {report.get('owner_email', 'No email')}")
+                    st.write(f"**Submitted:** {_format_date(report.get('submitted_at'))}")
+                    st.write(f"**Word Count:** {len(report.get('content', '').split())}")
+
+                    # Show preview of content
+                    content_preview = report.get('content', '')[:200] + "..." if len(
+                        report.get('content', '')) > 200 else report.get('content', '')
+                    st.write(f"**Preview:** {content_preview}")
+
+                with col2:
+                    # Use form submission for smoother transitions
+                    if st.button("👀 Review", key=f"review_{report['id']}", use_container_width=True):
+                        st.session_state.current_review_id = report['id']
+                        # Clear cache to force refresh when returning
+                        cache_key = f"reports_for_review_{st.session_state.user_id}"
+                        if cache_key in st.session_state:
+                            del st.session_state[cache_key]
+                        st.rerun()
+
+
+
+def _show_review_interface(report_id: int, pending_reports: List[Dict]):
+    """Display the actual review interface"""
+    # Find the report being reviewed
+    report_to_review = next((r for r in pending_reports if r['id'] == report_id), None)
+
+    if not report_to_review:
+        st.error("Report not found or no longer available for review")
+        if 'current_review_id' in st.session_state:
+            del st.session_state.current_review_id
+        # Clear cache to refresh data
+        cache_key = f"reports_for_review_{st.session_state.user_id}"
+        if cache_key in st.session_state:
+            del st.session_state[cache_key]
+        st.rerun()
+        return
+
+    st.subheader(f"📋 Review Report: {report_to_review['title']}")
+
+    # Back button with form
+    if st.button("← Back to Review Queue", use_container_width=True):
+        if 'current_review_id' in st.session_state:
+            del st.session_state.current_review_id
+        # Clear cache to refresh data
+        cache_key = f"reports_for_review_{st.session_state.user_id}"
+        if cache_key in st.session_state:
+            del st.session_state[cache_key]
+        st.rerun()
+
+    # Report details
+    col1, col2 = st.columns(2)
+
+    with col1:
+        st.write("**Report Details**")
+        st.write(f"**ID:** {report_to_review['id']}")
+        st.write(f"**Author:** {report_to_review.get('owner_full_name', 'Unknown')}")
+        st.write(f"**Username:** {report_to_review.get('owner_username', 'N/A')}")
+        st.write(f"**Email:** {report_to_review.get('owner_email', 'No email')}")
+        st.write(f"**Submitted:** {_format_date(report_to_review.get('submitted_at'))}")
+        st.write(f"**Status:** {report_to_review.get('status', 'unknown')}")
+
+    with col2:
+        st.write("**Statistics**")
+        st.write(f"**Word Count:** {len(report_to_review.get('content', '').split())}")
+        st.write(f"**Created:** {_format_date(report_to_review.get('created_at'))}")
+        if report_to_review.get('updated_at'):
+            st.write(f"**Last Updated:** {_format_date(report_to_review.get('updated_at'))}")
+
+    # Report content
+    st.markdown("---")
+    st.subheader("Report Content")
+    st.text_area("Content", report_to_review.get('content', ''), height=300, key="review_content", disabled=True)
+
+    # Review actions
+    st.markdown("---")
+    st.subheader("Review Decision")
+
+    col3, col4, col5 = st.columns([1, 1, 2])
+
+    with col3:
+        if st.button("✅ Approve", type="primary", use_container_width=True):
+            _submit_review_decision(report_id, "approved")
+
+    with col4:
+        if st.button("❌ Reject", type="secondary", use_container_width=True):
+            _submit_review_decision(report_id, "rejected")
+
+    with col5:
+        review_notes = st.text_area("Review Notes (Optional)",
+                                    placeholder="Add any feedback or notes for the author...",
+                                    key=f"notes_{report_id}")
+
+    # Competencies section (if available)
+    if report_to_review.get('competencies'):
+        st.markdown("---")
+        st.subheader("Competencies")
+        for comp in report_to_review['competencies']:
+            with st.expander(f"🔧 {comp.get('competency_title', 'Competency')}"):
+                st.write(f"**Response:** {comp.get('user_response', 'No response')}")
+
+
+def _submit_review_decision(report_id: int, decision: str):
+    """Submit the review decision to the API"""
+    review_notes = st.session_state.get(f"notes_{report_id}", "")
+
+    with LoadingState(f"Submitting {decision} decision..."):
+        success, result = st.session_state.api.review_report(
+            report_id=report_id,
+            status=decision,
+            review_notes=review_notes
+        )
+
+    if success:
+        st.balloons()
+        st.success(f"✅ Report {decision} successfully!")
+
+        # Clear review state and cache
+        if 'current_review_id' in st.session_state:
+            del st.session_state.current_review_id
+        if f"notes_{report_id}" in st.session_state:
+            del st.session_state[f"notes_{report_id}"]
+
+        # Clear cache to force refresh
+        cache_key = f"reports_for_review_{st.session_state.user_id}"
+        if cache_key in st.session_state:
+            del st.session_state[cache_key]
+
+        # Use success message without delay
+        st.balloons()
+        # Let the user see the success message before continuing
+        if st.button("← Back to Review Queue", key="success_back"):
+            st.rerun()
+
+    else:
+        error_msg = result.get('detail', 'Unknown error occurred')
+        ErrorHandler.show_error(f"Failed to submit review: {error_msg}")
+
+def _format_date(date_str: str) -> str:
+    """Format date string for display"""
+    if not date_str:
+        return "N/A"
+
+    try:
+        if 'T' in date_str:
+            dt = datetime.fromisoformat(date_str.replace('Z', '+00:00'))
+        else:
+            dt = datetime.strptime(date_str, '%Y-%m-%d %H:%M:%S')
+
+        return dt.strftime("%Y-%m-%d %H:%M")
+    except:
+        return date_str
+
+##############################################################################
 
 def ai_assistant_page():
     """AI Assistant main page"""
@@ -224,6 +426,7 @@ def ai_assistant_page():
     except Exception as e:
         st.error(f"Error loading AI features: {str(e)}")
         st.info("Please try refreshing the page or contact support if the issue persists.")
+
 def handle_authentication():
     """Handle login/registration flow"""
     login_tab, register_tab, forgot_tab = st.tabs(["🔑 Login", "📝 Register", "😉 Forgot Password"])
@@ -262,19 +465,14 @@ def main_app():
         main_pages.append("👀 Review Dashboard")
     if "view_all_reports" in permissions:
         main_pages.append("📈 All Reports")
-    if "manage_users" in permissions:
-        main_pages.append("👥 User Management")
-    if "system_settings" in permissions:
-        main_pages.extend(["⚙️ Admin Settings", "📊 Audit Dashboard"])
+    if "manage_users" in permissions or "system_settings" in permissions:
+        main_pages.append("👑 Admin Dashboard")  # Single entry point
 
     # Always available
     main_pages.extend(["ℹ️ About", "📞 Contact"])
 
     # Page selection
     selected_page = st.sidebar.radio("Go to", main_pages, index=0)
-
-    # Show quick actions
-    show_quick_actions(permissions)
 
     # User profile section
     show_user_profile_sidebar()
@@ -296,9 +494,10 @@ def main_app():
         "🤖 AI Assistant": ai_assistant_page,
         "👀 Review Dashboard": review_dashboard,
         "📈 All Reports": all_reports_page,
-        "👥 User Management": user_management_page,
-        "⚙️ Admin Settings": admin_settings_page,
-        "📊 Audit Dashboard": audit_dashboard_page,
+        "👥 User Management": user_management_page,  # ← Now uses enhanced_admin_dashboard
+        "⚙️ Admin Settings": admin_settings_page,  # ← Now uses enhanced_admin_dashboard
+        "👑 Admin Dashboard": lambda: enhanced_admin_dashboard(api),  # If using single entry
+        "📊 Analytics Dashboard": lambda: enhanced_admin_dashboard(api),  # Alternative name
         "ℹ️ About": about_page,
         "📞 Contact": contact_page
     }
@@ -361,35 +560,27 @@ def reports_page():
 
 def profile_page():
     """Profile page"""
-    profile.profile_page(api)
-
-
-def review_dashboard():
-    """Review dashboard for reviewers"""
-    st.title("👀 Review Dashboard")
-    # Implementation would go here
-    st.info("Review dashboard implementation in progress")
+    user_profile.profile_page(api)
 
 
 def all_reports_page():
     """All reports view for admins/reviewers"""
-    #admin.admin_reports_view(api)
-    enhanced_admin_dashboard.main()
+    enhanced_admin_dashboard(api)
 
 
 def user_management_page():
     """User management for admins"""
-    admin.admin_dashboard(api)
+    enhanced_admin_dashboard(api)
 
 
 def admin_settings_page():
     """Admin settings"""
-    admin.system_monitoring(api)
+    enhanced_admin_dashboard(api)
 
 
 def audit_dashboard_page():
     """Audit dashboard"""
-    from audit_dashboard import audit_dashboard
+    from admin_audit_dashboard import audit_dashboard
     audit_dashboard(api)
 
 

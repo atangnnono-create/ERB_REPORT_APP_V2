@@ -27,7 +27,7 @@ class UserCreate(BaseModel):
     username: constr(min_length=3, max_length=50, pattern=r'^[a-zA-Z0-9_]+$')
     email: EmailStr
     password: constr(min_length=8)
-    full_name: Optional[str] = None
+    full_name: str
     role: str = "candidate"
 
     @field_validator('username')
@@ -66,11 +66,9 @@ class UserRole(str, Enum):
 class UserBase(BaseModel):
     username: str
     email: Optional[EmailStr] = None
-    full_name: Optional[str] = None
+    full_name: str
     role: UserRole = UserRole.CANDIDATE
 
-class UserCreate(UserBase):
-    password: str
 
 class UserResponse(UserBase):
     id: int
@@ -82,11 +80,17 @@ class UserResponse(UserBase):
         from_attributes = True
 
 class UserUpdate(BaseModel):
-    email: Optional[str] = None
-    full_name: Optional[str] = None
+    email: Optional[EmailStr] = None
+    full_name: str
     role: Optional[UserRole] = None
     is_active: Optional[bool] = None
     is_verified: Optional[bool] = None
+
+    @field_validator('email')
+    def validate_email(cls, v):
+        if v and len(v) < 5:
+            raise ValueError('Email must be at least 5 characters')
+        return v
 
 # -------- COMPETENCIES --------
 class CompetencyCreate(BaseModel):
@@ -123,6 +127,10 @@ class ReportResponse(ReportBase):
     competencies: List[CompetencyResponse] = []
     created_at: datetime
     updated_at: Optional[datetime] = None
+
+    owner_username: Optional[str] = None
+    owner_full_name: Optional[str] = None
+    owner_email: Optional[str] = None
 
     class Config:
         from_attributes = True

@@ -50,13 +50,13 @@ def register_ui(api: EnhancedAPIClient):
     with st.form("registration_form"):
         username = st.text_input("Username *")
         email = st.text_input("Email Address *")
-        full_name = st.text_input("Full Name")
+        full_name = st.text_input("Full Name *")
         password = st.text_input("Password *", type="password")
 
         submitted = st.form_submit_button("Register")
 
         if submitted:
-            if not username or not email or not password:
+            if not username or not email or not password or not full_name:
                 st.error("Please fill in all required fields (*)")
                 return
 

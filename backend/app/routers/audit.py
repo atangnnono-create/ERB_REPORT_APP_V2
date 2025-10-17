@@ -21,7 +21,7 @@ def get_audit_logs(
         resource_id: Optional[int] = Query(None, description="Filter by resource ID"),
         start_date: Optional[datetime] = Query(None, description="Start date for filtering"),
         end_date: Optional[datetime] = Query(None, description="End date for filtering"),
-        limit: int = Query(100, le=1000, description="Maximum number of logs to return"),
+        limit: int = Query(100, le=5000, description="Maximum number of logs to return"),
         offset: int = Query(0, ge=0, description="Number of logs to skip"),
         db: Session = Depends(get_db),
         current_user: models.User = Depends(require_permission(Permission.SYSTEM_ADMIN))
