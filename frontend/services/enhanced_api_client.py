@@ -281,9 +281,9 @@ class EnhancedAPIClient:
         """Submit a report for review"""
         return self._request_with_retry('PUT', f'/api/v1/review/reports/{report_id}/submit')
 
-    def get_reports_for_review(self, status: str = "submitted") -> Tuple[bool, Any]:
+    def get_reports_for_review(self) -> Tuple[bool, Any]:
         """Get reports pending review (reviewer/admin only)"""
-        return self._request_with_retry('GET', f'/api/v1/review/reports?status={status}')
+        return self._request_with_retry('GET', '/api/v1/review/reports')
 
     def review_report(self, report_id: int, status: str, review_notes: str = None) -> Tuple[bool, Any]:
         """Review a report (approve/reject)"""

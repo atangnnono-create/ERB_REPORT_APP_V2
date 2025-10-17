@@ -5,6 +5,7 @@ from datetime import datetime, timedelta, time
 from typing import List, Dict
 from services.enhanced_api_client import EnhancedAPIClient
 from utilities.error_handling import ErrorHandler, LoadingState, with_loading
+from reviewer_feedback import author_feedback_dashboard
 
 
 def enhanced_reports_ui(api: EnhancedAPIClient):
@@ -36,7 +37,7 @@ def enhanced_reports_ui(api: EnhancedAPIClient):
     elif can_view_all:  # Reviewer - 2 tabs
         tab1, tab2 = st.tabs(["📊 My Reports", "👀 All Reports"])
     else:  # Regular users - 1 tab
-        tab1, = st.tabs(["📊 My Reports"])
+        tab1,tab2 = st.tabs(["📊 My Reports", "Reviewer Feedback"])
 
     # Always show My Reports tab
     with tab1:
@@ -51,6 +52,10 @@ def enhanced_reports_ui(api: EnhancedAPIClient):
     if can_manage and tab3 is not None:
         with tab3:
             show_bulk_operations(api, can_manage)
+
+    feedback_tab = tab3 if can_view_all and not can_manage else tab2
+    with feedback_tab:
+        author_feedback_dashboard(api)
 
 
 

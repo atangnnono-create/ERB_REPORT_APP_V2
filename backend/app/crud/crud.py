@@ -208,21 +208,26 @@ def create_or_update_report(db: Session, report: schemas.ReportCreate, user_id: 
     db.refresh(db_report)
     return db_report
 
-# ✅ New function for report review
 def review_report(db: Session, report_id: int, review: schemas.ReportReview, reviewer_id: int):
     db_report = db.query(models.Report).filter(models.Report.id == report_id).first()
     if not db_report:
         return None
 
     db_report.status = review.status
-    db_report.reviewed_at = func.now()
-    db_report.reviewed_by = reviewer_id
     db_report.review_notes = review.review_notes
+
+    # Only set reviewed_at and reviewed_by when review is completed (approved/rejected)
+    if review.status in [schemas.ReportStatus.APPROVED, schemas.ReportStatus.REJECTED]:
+        db_report.reviewed_at = func.now()
+        db_report.reviewed_by = reviewer_id
+    else:
+        # For under_review status, clear these fields since review is not completed
+        db_report.reviewed_at = None
+        db_report.reviewed_by = None
 
     db.commit()
     db.refresh(db_report)
     return db_report
-
 
 # ✅ New function to submit report for review
 def submit_report(db: Session, report_id: int, user_id: int):
