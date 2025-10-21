@@ -5,7 +5,6 @@ from sqlalchemy.pool import QueuePool
 from typing import Generator
 from contextlib import contextmanager
 import logging
-# Import settings
 from backend.app.core.config import settings
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 
@@ -13,8 +12,8 @@ logger = logging.getLogger(__name__)
 
 # Engine configuration with connection pooling
 engine = create_engine(
-    settings.database_url,
-    connect_args={"check_same_thread": False} if "sqlite" in settings.database_url else {},
+    settings.DATABASE_URL,
+    connect_args={"check_same_thread": False} if "sqlite" in settings.DATABASE_URL else {},
     poolclass=QueuePool,
     pool_size=10,
     max_overflow=20,

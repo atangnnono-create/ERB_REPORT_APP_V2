@@ -82,7 +82,7 @@ def update_user(db: Session, user_id: int, user_update: schemas.UserUpdate):
     db_user = get_user(db, user_id)  # This will raise NotFoundException if user doesn't exist
 
     try:
-        update_data = user_update.dict(exclude_unset=True)
+        update_data = user_update.model_dump(exclude_unset=True)
 
         # ✅ NEW: Check for duplicate email (mirroring create_user pattern)
         if 'email' in update_data and update_data['email']:
@@ -110,22 +110,29 @@ def update_user(db: Session, user_id: int, user_update: schemas.UserUpdate):
 
 # -------- REPORTS --------
 def get_reports(db: Session, user_id: int):
-    """Get user's reports with competencies eagerly loaded"""
+    """Get user's reports with competencies and users eagerly loaded"""
     return db.query(models.Report).options(
         joinedload(models.Report.competencies),
-        joinedload(models.Report.owner)
+        joinedload(models.Report.owner),      # ✅ Added eager loading for owner
+        joinedload(models.Report.reviewer)    # ✅ Added eager loading for reviewer
     ).filter(models.Report.owner_id == user_id).all()
 
 def get_all_reports(db: Session):
-    """Get ALL reports with competencies eagerly loaded"""
+    """Get ALL reports with proper eager loading"""
     return db.query(models.Report).options(
         joinedload(models.Report.competencies),
-        joinedload(models.Report.owner)
-    ).all()
+        joinedload(models.Report.owner),  # Load owner once
+        joinedload(models.Report.reviewer)  # Load reviewer once
+    ).all()  # Still needs pagination but fixes N+1
 
 
 def get_report(db: Session, report_id: int, user_id: int):
-    report = db.query(models.Report).filter(
+    """Get single report with owner and reviewer data eagerly loaded"""
+    report = db.query(models.Report).options(
+        joinedload(models.Report.owner),      # ✅ Eager load owner user data
+        joinedload(models.Report.reviewer),   # ✅ Eager load reviewer user data
+        joinedload(models.Report.competencies) # ✅ Eager load competencies
+    ).filter(
         models.Report.id == report_id,
         models.Report.owner_id == user_id
     ).first()
@@ -208,6 +215,7 @@ def create_or_update_report(db: Session, report: schemas.ReportCreate, user_id: 
     db.refresh(db_report)
     return db_report
 
+
 def review_report(db: Session, report_id: int, review: schemas.ReportReview, reviewer_id: int):
     db_report = db.query(models.Report).filter(models.Report.id == report_id).first()
     if not db_report:
@@ -216,17 +224,28 @@ def review_report(db: Session, report_id: int, review: schemas.ReportReview, rev
     db_report.status = review.status
     db_report.review_notes = review.review_notes
 
-    # Only set reviewed_at and reviewed_by when review is completed (approved/rejected)
-    if review.status in [schemas.ReportStatus.APPROVED, schemas.ReportStatus.REJECTED]:
-        db_report.reviewed_at = func.now()
-        db_report.reviewed_by = reviewer_id
+    # ✅ CRITICAL FIX: Set reviewed_by for ALL review actions including under_review
+    if review.status in [schemas.ReportStatus.UNDER_REVIEW, schemas.ReportStatus.APPROVED,
+                         schemas.ReportStatus.REJECTED]:
+        db_report.reviewed_by = reviewer_id  # Set reviewer for all review actions
+
+        # Only set reviewed_at for final decisions (approved/rejected)
+        if review.status in [schemas.ReportStatus.APPROVED, schemas.ReportStatus.REJECTED]:
+            db_report.reviewed_at = func.now()
+        else:
+            # For under_review, we don't set reviewed_at since it's not completed
+            db_report.reviewed_at = None
     else:
-        # For under_review status, clear these fields since review is not completed
+        # For non-review statuses, clear these fields
         db_report.reviewed_at = None
         db_report.reviewed_by = None
 
     db.commit()
     db.refresh(db_report)
+
+    # Debug logging
+    logger.info(f"DEBUG: Updated report {report_id} - status={review.status}, reviewed_by={db_report.reviewed_by}")
+
     return db_report
 
 # ✅ New function to submit report for review
@@ -240,11 +259,56 @@ def submit_report(db: Session, report_id: int, user_id: int):
         return None
 
     db_report.status = schemas.ReportStatus.SUBMITTED
+    db_report.erb_stage = schemas.ERBStage.DESKTOP_ASSESSMENT
+    db_report.current_stage_status = schemas.StageStatus.NOT_STARTED
     db_report.submitted_at = func.now()
 
     db.commit()
     db.refresh(db_report)
     return db_report
+
+
+def progress_erb_stage(db: Session, report_id: int, progression: schemas.StageProgression, reviewer_id: int):
+    """Progress report through ERB stages"""
+    db_report = db.query(models.Report).filter(models.Report.id == report_id).first()
+    if not db_report:
+        return None
+
+    # Update ERB stage
+    db_report.erb_stage = progression.next_stage
+    db_report.current_stage_status = progression.status
+    db_report.reviewed_by = reviewer_id
+
+    # Set stage start timestamps
+    now = func.now()
+    if progression.next_stage == schemas.ERBStage.DESKTOP_ASSESSMENT and not db_report.desktop_assessment_started:
+        db_report.desktop_assessment_started = now
+    elif progression.next_stage == schemas.ERBStage.STANDARD_REVIEW and not db_report.standard_review_started:
+        db_report.standard_review_started = now
+    elif progression.next_stage == schemas.ERBStage.PROFESSIONAL_ASSESSMENT and not db_report.professional_assessment_started:
+        db_report.professional_assessment_started = now
+    elif progression.next_stage == schemas.ERBStage.PROFESSIONAL_REVIEW and not db_report.professional_review_started:
+        db_report.professional_review_started = now
+
+    # Update overall status for final stages
+    if progression.next_stage in [schemas.ERBStage.APPROVED, schemas.ERBStage.REJECTED]:
+        db_report.status = progression.next_stage
+        db_report.reviewed_at = now
+        db_report.current_stage_status = schemas.StageStatus.COMPLETED
+
+    # Add progression notes
+    if progression.notes:
+        note_prefix = f"\n--- ERB Stage: {progression.next_stage.value.upper()} ---\n"
+        if db_report.review_notes:
+            db_report.review_notes += note_prefix + progression.notes
+        else:
+            db_report.review_notes = note_prefix + progression.notes
+
+    db.commit()
+    db.refresh(db_report)
+    return db_report
+
+
 
 
 def update_report(db: Session, db_report: models.Report, update: schemas.ReportCreate):

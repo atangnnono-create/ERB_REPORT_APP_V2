@@ -2,86 +2,58 @@ import os
 from typing import Optional, List
 
 from dotenv import load_dotenv
-from pydantic import validator
+from pydantic import field_validator, ConfigDict
 from pydantic_settings import BaseSettings
 
 load_dotenv()
 
 
 class Settings(BaseSettings):
-    OPENAI_API_KEY: str
-    DATABASE_URL: str
-    SECRET_KEY: str
-    ALGORITHM: str
-    ACCESS_TOKEN_EXPIRE_MINUTES: int
-    GOOGLE_SERVICE_ACCOUNT_JSON_PATH: str
-    SPREADSHEET_ID: str
-    SHEET_NAME: str
-    ADMIN_USERNAME: str
-    ADMIN_PASSWORD: str
-    ADMIN_EMAIL: str
-    SMTP_SERVER: str
-    SMTP_PORT: int
-    SMTP_USERNAME: str
-    SMTP_PASSWORD: str
-    FROM_EMAIL: str
-    BASE_URL: str
-    SMTP_TIMEOUT: int
-    ENVIRONMENT: str
-    REDIS_URL: str
+    # Environment variables (Pydantic will auto-load these from .env)
+    OPENAI_API_KEY: Optional[str] = None
+    DATABASE_URL: str = "sqlite:///./reports.db"
+    SECRET_KEY: str = "4f439ce8d87aff8d7f4af5096cf132cb90b79a04f6af7e2f7612983942bd0fae"
+    ALGORITHM: str = "HS256"
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
+    GOOGLE_SERVICE_ACCOUNT_JSON_PATH: Optional[str] = None
+    SPREADSHEET_ID: Optional[str] = None
+    SHEET_NAME: Optional[str] = None
+    ADMIN_USERNAME: str = "admin"
+    ADMIN_PASSWORD: str = "admin123"
+    ADMIN_EMAIL: str = "customengineeringreports@gmail.com"
+    ADMIN_FULL_NAME: str = "Administrator"
+    SMTP_SERVER: str = "smtp.gmail.com"
+    SMTP_PORT: int = 587
+    SMTP_USERNAME: str = "fluidair2010@gmail.com"
+    SMTP_PASSWORD: str = "ydwhlyujkoffbmgi"
+    FROM_EMAIL: str = "noreply@engineeringreports.com"
+    BASE_URL: str = "http://localhost:8501"
+    SMTP_TIMEOUT: int = 30
+    ENVIRONMENT: str = "development"
+    REDIS_URL: str = "redis://localhost:6379/0"
+    APP_NAME: str = "Engineering Report Deck"
+    RATE_LIMIT_REQUESTS: int = 100
+    RATE_LIMIT_WINDOW: int = 3600
 
-    class Config:
-        env_file = ".env"
-        extra = "allow"
+    # CORS - this needs special handling
+    allowed_origins: List[str] = ["http://localhost:3000", "http://localhost:8501"]
 
+    # Pydantic V2 config
+    model_config = ConfigDict(
+        env_file=".env",
+        case_sensitive=True,
+        extra="allow"
+    )
 
-
-    # Database
-    database_url: str = os.getenv("DATABASE_URL", "sqlite:///./reports.db")
-
-    # Security
-    secret_key: str = os.getenv("SECRET_KEY", "")
-    algorithm: str = os.getenv("ALGORITHM", "HS256")
-    access_token_expire_minutes: int = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "30"))
-
-    # Email
-    smtp_server: str = os.getenv("SMTP_SERVER", "smtp.ethereal.email")
-    smtp_port: int = int(os.getenv("SMTP_PORT", "587"))
-    smtp_username: Optional[str] = os.getenv("SMTP_USERNAME")
-    smtp_password: Optional[str] = os.getenv("SMTP_PASSWORD")
-    smtp_timeout: int = int(os.getenv("SMTP_TIMEOUT", "30"))
-    base_url: str = os.getenv("BASE_URL", "http://localhost:8501")
-    app_name: str = os.getenv("APP_NAME", "Engineering Report Deck")
-    from_email: str = os.getenv("FROM_EMAIL", "noreply@engineeringreports.com")
-
-    # OpenAI
-    openai_api_key: Optional[str] = os.getenv("OPENAI_API_KEY")
-
-    # CORS
-    allowed_origins: List[str] = []
-
-    # Environment
-    environment: str = os.getenv("ENVIRONMENT", "development")
-
-    # Redis
-    redis_url: str = os.getenv("REDIS_URL", "redis://localhost:6379/0")
-
-    # Rate Limiting
-    rate_limit_requests: int = int(os.getenv("RATE_LIMIT_REQUESTS", "100"))
-    rate_limit_window: int = int(os.getenv("RATE_LIMIT_WINDOW", "3600"))
-
-    # Admin
-    admin_username: str = os.getenv("ADMIN_USERNAME", "admin")
-    admin_password: str = os.getenv("ADMIN_PASSWORD", "admin123")
-    admin_email: str = os.getenv("ADMIN_EMAIL", "admin@engineeringreports.com")
-
-    @validator('allowed_origins', pre=True)
+    @field_validator('allowed_origins', mode='before')
+    @classmethod
     def parse_allowed_origins(cls, v):
         if isinstance(v, str):
             return [origin.strip() for origin in v.split(",") if origin.strip()]
         return v or ["http://localhost:3000", "http://localhost:8501"]
 
-    @validator('secret_key')
+    @field_validator('SECRET_KEY', mode='after')
+    @classmethod
     def validate_secret_key(cls, v):
         default_key = "4f439ce8d87aff8d7f4af5096cf132cb90b79a04f6af7e2f7612983942bd0fae"
         if not v or v == default_key:
@@ -95,13 +67,15 @@ class Settings(BaseSettings):
             raise ValueError("SECRET_KEY must be at least 32 characters long")
         return v
 
-    @validator('openai_api_key')
+    @field_validator('OPENAI_API_KEY', mode='after')
+    @classmethod
     def validate_openai_key(cls, v):
         if not v and os.getenv("ENVIRONMENT") == "production":
             print("⚠️  WARNING: OPENAI_API_KEY not set - AI features will be disabled")
         return v
 
-    @validator('database_url')
+    @field_validator('DATABASE_URL', mode='after')
+    @classmethod
     def validate_database_url(cls, v):
         if not v:
             raise ValueError("DATABASE_URL must be set")
@@ -111,15 +85,11 @@ class Settings(BaseSettings):
 
     @property
     def is_production(self) -> bool:
-        return self.environment == "production"
+        return self.ENVIRONMENT == "production"
 
     @property
     def is_development(self) -> bool:
-        return self.environment == "development"
-
-    class Config:
-        case_sensitive = True
-        env_file = ".env"
+        return self.ENVIRONMENT == "development"
 
 
 # Create global settings instance

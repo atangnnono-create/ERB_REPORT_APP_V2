@@ -17,6 +17,11 @@ def review_dashboard(api: EnhancedAPIClient):
         ErrorHandler.show_error("🔒 Access denied. Reviewer privileges required.")
         return
 
+    # ✅ FIX: Clear cache when first loading dashboard
+    cache_key = f"reports_for_review_{st.session_state.user_id}"
+    if cache_key in st.session_state:
+        del st.session_state[cache_key]
+
     # Show comprehensive metrics first
     show_review_metrics(api)
 
@@ -31,6 +36,173 @@ def review_dashboard(api: EnhancedAPIClient):
 
     with tab3:
         _show_review_settings(api)
+
+
+def _show_erb_stage_progression(api: EnhancedAPIClient, report: Dict):
+    """Show ERB stage progression interface"""
+
+    # Define ERB stages in order - this is the single source of truth
+    erb_stages = [
+        {"stage": "desktop_assessment", "name": "Desktop Assessment",
+         "description": "Administrative completeness check"},
+        {"stage": "standard_review", "name": "Standard Review", "description": "Technical compliance assessment"},
+        {"stage": "professional_assessment", "name": "Professional Assessment",
+         "description": "Depth & quality evaluation"},
+        {"stage": "professional_review", "name": "Professional Review",
+         "description": "Final validation & interview decision"}
+    ]
+
+    # Get current stage - default to first stage if not set
+    current_stage = report.get('erb_stage')
+    if not current_stage or current_stage == 'submitted':
+        # Default to first stage for newly submitted reports
+        current_stage = erb_stages[0]["stage"]
+
+    current_status = report.get('current_stage_status', 'not_started')
+
+    # Show progression timeline
+    st.write("### 📋 Report Assessment Progress")
+
+    # Create columns for each stage
+    cols = st.columns(len(erb_stages))
+
+    for i, stage_info in enumerate(erb_stages):
+        stage = stage_info["stage"]
+        with cols[i]:
+            # Determine stage status
+            stage_index = _get_erb_stage_index(erb_stages, stage)
+            current_index = _get_erb_stage_index(erb_stages, current_stage)
+
+            if stage_index < current_index:
+                # Stage is completed
+                status_emoji = "✅"
+                status_color = "success"
+            elif stage_index == current_index:
+                # Current stage
+                if current_status == 'completed':
+                    status_emoji = "✅"
+                    status_color = "success"
+                else:
+                    status_emoji = "🔍"
+                    status_color = "warning"
+            else:
+                # Future stage
+                status_emoji = "⏳"
+                status_color = "secondary"
+
+            # Display stage card
+            if status_color == "success":
+                st.success(f"{status_emoji} {stage_info['name']}")
+            elif status_color == "warning":
+                st.warning(f"{status_emoji} {stage_info['name']}")
+            else:
+                st.info(f"{status_emoji} {stage_info['name']}")
+
+            st.caption(stage_info['description'])
+
+    st.markdown("---")
+
+    # Stage progression controls
+    st.write("### 🚀 Stage Actions")
+
+    current_index = _get_erb_stage_index(erb_stages, current_stage)
+
+    # Show controls for current stage
+    if current_index < len(erb_stages):
+        current_stage_info = erb_stages[current_index]
+
+        st.write(f"**Current Stage:** {current_stage_info['name']}")
+        st.write(f"**Status:** {current_status.replace('_', ' ').title()}")
+        st.write(f"**Description:** {current_stage_info['description']}")
+
+        progression_notes = st.text_area(
+            f"Notes for {current_stage_info['name']}",
+            placeholder=f"Add any notes or observations for the {current_stage_info['name'].lower()}...",
+            key=f"stage_notes_{report['id']}"
+        )
+
+        col1, col2 = st.columns(2)
+
+        with col1:
+            # Complete current stage button
+            if current_status != 'completed':
+                if st.button("✅ Complete Current Stage", type="primary", use_container_width=True):
+                    if _progress_to_stage(api, report['id'], current_stage, progression_notes, "completed"):
+                        st.success(f"✅ {current_stage_info['name']} completed!")
+                        st.rerun()
+            else:
+                st.button("✅ Stage Completed", type="secondary", use_container_width=True, disabled=True)
+
+        with col2:
+            # Move to next stage button (only if current stage is completed)
+            if current_status == 'completed' and current_index < len(erb_stages) - 1:
+                next_stage_info = erb_stages[current_index + 1]
+                if st.button(f"➡️ Start {next_stage_info['name']}", type="primary", use_container_width=True):
+                    if _progress_to_stage(api, report['id'], next_stage_info['stage'], progression_notes,
+                                          "in_progress"):
+                        st.success(f"🚀 Started {next_stage_info['name']}!")
+                        st.rerun()
+            elif current_index == len(erb_stages) - 1 and current_status == 'completed':
+                # Final decision for last completed stage
+                if st.button("🎯 Make Final Decision", type="primary", use_container_width=True):
+                    st.session_state.final_decision_report = report['id']
+                    st.rerun()
+
+    # Final decision interface
+    if st.session_state.get('final_decision_report') == report['id']:
+        st.markdown("---")
+        st.write("### 🎯 Final Decision")
+
+        final_notes = st.text_area(
+            "Final Assessment Notes",
+            placeholder="Provide comprehensive final assessment notes...",
+            key=f"final_notes_{report['id']}"
+        )
+
+        col1, col2 = st.columns(2)
+
+        with col1:
+            if st.button("✅ Approve Registration", type="primary", use_container_width=True):
+                if _progress_to_stage(api, report['id'], "approved", final_notes, "completed"):
+                    st.balloons()
+                    st.success("🎉 Registration Approved!")
+                    if 'final_decision_report' in st.session_state:
+                        del st.session_state.final_decision_report
+                    st.rerun()
+
+        with col2:
+            if st.button("❌ Reject Registration", type="secondary", use_container_width=True):
+                if _progress_to_stage(api, report['id'], "rejected", final_notes, "completed"):
+                    st.success("📋 Registration Rejected")
+                    if 'final_decision_report' in st.session_state:
+                        del st.session_state.final_decision_report
+                    st.rerun()
+
+
+
+def _get_erb_stage_index(erb_stages: List[Dict], stage: str) -> int:
+    """Get index of ERB stage within the defined stages list"""
+    for i, stage_info in enumerate(erb_stages):
+        if stage_info["stage"] == stage:
+            return i
+    return 0
+
+
+def _progress_to_stage(api: EnhancedAPIClient, report_id: int, next_stage: str, notes: str = None,
+                       status: str = "in_progress"):
+    """Progress report to specified ERB stage"""
+    with LoadingState(f"Progressing to {next_stage}..."):
+        success, result = api.progress_erb_stage(report_id, next_stage, notes, status)
+
+    if success:
+        # Clear cache to refresh data
+        cache_key = f"reports_for_review_{st.session_state.user_id}"
+        if cache_key in st.session_state:
+            del st.session_state[cache_key]
+        return True
+    else:
+        ErrorHandler.show_error(f"Failed to progress stage: {result.get('detail', 'Unknown error')}")
+        return False
 
 
 def show_review_metrics(api: EnhancedAPIClient):
@@ -166,9 +338,10 @@ def get_review_statistics(api: EnhancedAPIClient) -> Dict:
         urgent_reports = len([r for r in all_reports if _is_urgent_report(r)])
         old_pending = len([r for r in all_reports if _is_old_pending_report(r, one_week_ago)])
 
-        # Calculate review efficiency (simplified)
+        # ✅ FIXED: Check for None dates before comparison
         your_reviews_today = len([r for r in all_reports
                                   if r.get('reviewed_by') == st.session_state.user_id
+                                  and _parse_date(r.get('reviewed_at')) is not None
                                   and _parse_date(r.get('reviewed_at')) >= today_start])
 
         # Average review time (placeholder - would need more data)
@@ -202,6 +375,7 @@ def get_review_statistics(api: EnhancedAPIClient) -> Dict:
             'status_counts': status_counts
         }
 
+
 def _is_urgent_report(report: Dict) -> bool:
     """Determine if a report is urgent"""
     # Criteria for urgency: high priority, specific keywords, or from important users
@@ -225,7 +399,7 @@ def _is_old_pending_report(report: Dict, cutoff_date: datetime) -> bool:
 
 
 def _parse_date(date_str: str) -> datetime:
-    """Parse date string to datetime object"""
+    """Parse date string to datetime object, return None if invalid"""
     if not date_str:
         return None
 
@@ -248,9 +422,14 @@ def _show_reviewer_dashboard(api: EnhancedAPIClient):
     """Show the enhanced review queue interface"""
     st.subheader("📝 Review Queue")
 
-    # DEBUG: Check current cache state
-    cache_key = f"reports_for_review_{st.session_state.user_id}"
-
+    # ✅ FIX: Add refresh button at the top
+    col_refresh, col_space = st.columns([1, 5])
+    with col_refresh:
+        if st.button("🔄 Refresh", key="refresh_queue", help="Refresh the review queue with latest data"):
+            cache_key = f"reports_for_review_{st.session_state.user_id}"
+            if cache_key in st.session_state:
+                del st.session_state[cache_key]
+            st.rerun()
 
     # Quick filters
     col1, col2, col3, col4 = st.columns([2, 1, 1, 1])
@@ -281,18 +460,16 @@ def _show_reviewer_dashboard(api: EnhancedAPIClient):
 
     # Load reports for review with caching
     with LoadingState("Loading review queue..."):
-        if cache_key not in st.session_state:
+        cache_key = f"reports_for_review_{st.session_state.user_id}"
 
+        if cache_key not in st.session_state:
             success, reports = api.get_reports_for_review()
             if success:
                 st.session_state[cache_key] = reports
-
             else:
                 st.session_state[cache_key] = []
-
         else:
             reports = st.session_state[cache_key]
-
 
         reports = st.session_state[cache_key]
 
@@ -303,9 +480,6 @@ def _show_reviewer_dashboard(api: EnhancedAPIClient):
         # Filter and sort reports
         filtered_reports = _filter_and_sort_reports(reports, search_filter, status_filter, priority_filter, sort_by)
         pending_review = [r for r in filtered_reports if r.get('status') in ['submitted', 'under_review']]
-
-        print(f"DEBUG: After filtering - Total: {len(reports)}, Filtered: {len(filtered_reports)}, Pending: {len(pending_review)}")
-        print(f"DEBUG: Status breakdown: {[(r['id'], r.get('status')) for r in reports if r.get('status') in ['submitted', 'under_review']]}")
 
         if not pending_review:
             st.success("✅ All reports have been reviewed!")
@@ -365,9 +539,30 @@ def _filter_and_sort_reports(reports: List[Dict], search: str, status: str, prio
 
     return filtered
 
+
 def _display_report_card(api: EnhancedAPIClient, report: Dict):
     """Display an enhanced report card in the queue"""
-    # Determine card style based on urgency and status
+    # Define ERB stages for consistent display
+    erb_stages = [
+        {"stage": "desktop_assessment", "name": "Desktop Assessment"},
+        {"stage": "standard_review", "name": "Standard Review"},
+        {"stage": "professional_assessment", "name": "Professional Assessment"},
+        {"stage": "professional_review", "name": "Professional Review"}
+    ]
+
+    # Determine current stage - default to Desktop Assessment for new reports
+    current_erb_stage = report.get('erb_stage')
+    if not current_erb_stage or current_erb_stage == 'submitted':
+        current_erb_stage = 'desktop_assessment'
+
+    # Find stage display name
+    stage_display_name = "Desktop Assessment"  # Default
+    for stage_info in erb_stages:
+        if stage_info["stage"] == current_erb_stage:
+            stage_display_name = stage_info["name"]
+            break
+
+    # Rest of your existing card display logic...
     is_urgent = _is_urgent_report(report)
     status = report.get('status', 'submitted')
     days_old = _get_days_old(report)
@@ -377,15 +572,25 @@ def _display_report_card(api: EnhancedAPIClient, report: Dict):
         col1, col2, col3 = st.columns([3, 1, 1])
 
         with col1:
-            # Title with status indicator
-            status_emoji = "🚨" if is_urgent else "📝"
-            if status == 'under_review':
-                status_emoji = "🔍"
+            # Title with ERB stage indicator
+            stage_emoji = {
+                'desktop_assessment': '📄',
+                'standard_review': '🔍',
+                'professional_assessment': '⭐',
+                'professional_review': '🎯',
+                'approved': '✅',
+                'rejected': '❌'
+            }.get(current_erb_stage, '📝')
 
-            st.write(f"**{status_emoji} {report['title']}**")
-            st.write(f"👤 **Author:** {report.get('owner_full_name', 'Unknown')} ({report.get('owner_username', 'N/A')})")
+            st.write(f"**{stage_emoji} {report['title']}**")
+            st.write(f"📈 **Assessment Stage:** {stage_display_name}")
+
+            # Rest of your existing column 1 content...
+            st.write(
+                f"👤 **Author:** {report.get('owner_full_name', 'Unknown')} ({report.get('owner_username', 'N/A')})")
             st.write(f"📅 **Submitted:** {_format_date(report.get('submitted_at'))} ({days_old} days ago)")
-            st.write(f"📊 **Words:** {len(report.get('content', '').split())} | **Competencies:** {len(report.get('competencies', []))}")
+            st.write(
+                f"📊 **Words:** {len(report.get('content', '').split())} | **Competencies:** {len(report.get('competencies', []))}")
 
             # Quick preview
             content_preview = report.get('content', '')[:150] + "..." if len(
@@ -393,15 +598,17 @@ def _display_report_card(api: EnhancedAPIClient, report: Dict):
             with st.expander("Preview content"):
                 st.write(content_preview)
 
+        # Rest of your existing card columns 2 and 3...
         with col2:
-            # Status and priority badges
             if is_urgent:
                 st.error("🚨 URGENT")
             else:
                 st.info("Normal Priority")
 
             if status == 'under_review':
-                st.warning("Under Review")
+                reviewer_name = report.get('reviewer_full_name') or report.get(
+                    'reviewer_username') or 'Another Reviewer'
+                st.warning(f"👤 Under Review by {reviewer_name}")
             else:
                 st.info("Submitted")
 
@@ -409,21 +616,21 @@ def _display_report_card(api: EnhancedAPIClient, report: Dict):
                 st.error(f"⏳ {days_old} days old")
 
         with col3:
-            # Action buttons
             if st.button("👀 Review", key=f"review_{report['id']}", use_container_width=True):
                 st.session_state.current_review_id = report['id']
-                # Clear cache to force refresh when returning
                 cache_key = f"reports_for_review_{st.session_state.user_id}"
                 if cache_key in st.session_state:
                     del st.session_state[cache_key]
                 st.rerun()
 
-            # Quick actions
-            if st.button("⏳ Mark Under Review", key=f"mark_under_{report['id']}", use_container_width=True):
-                _quick_status_update(api, report['id'], 'under_review')
+            if status == 'submitted':
+                if st.button("⏳ Mark Under Review", key=f"mark_under_{report['id']}", use_container_width=True):
+                    _quick_status_update(api, report['id'], 'under_review')
+            else:
+                st.button("🔍 Currently Reviewing", key=f"reviewing_{report['id']}",
+                          use_container_width=True, disabled=True)
 
         st.markdown("---")
-
 
 
 def _get_days_old(report: Dict) -> int:
@@ -446,11 +653,10 @@ def _quick_status_update(api: EnhancedAPIClient, report_id: int, status: str):
 
     if success:
         st.success(f"✅ Report marked as {status}!")
-        # ONLY clear cache for final decisions, not for "under_review"
-        if status in ["approved", "rejected"]:
-            cache_key = f"reports_for_review_{st.session_state.user_id}"
-            if cache_key in st.session_state:
-                del st.session_state[cache_key]
+        # ✅ FIX: ALWAYS clear cache for ANY status change
+        cache_key = f"reports_for_review_{st.session_state.user_id}"
+        if cache_key in st.session_state:
+            del st.session_state[cache_key]
         st.rerun()
     else:
         ErrorHandler.show_error(f"Failed to update status: {result.get('detail', 'Unknown error')}")
@@ -551,9 +757,12 @@ def _show_review_interface(api: EnhancedAPIClient, report_id: int, pending_repor
             _submit_review_decision(api, report_id, "rejected")
 
     with col5:
-        st.write("**⏳ Further Review Needed**")
+        st.write("**⏳ Lock Report for Review**")
         if st.button("Mark Under Review", type="secondary", use_container_width=True, key="under_review_btn"):
             _submit_review_decision(api, report_id, "under_review")
+
+    st.markdown("---")
+    _show_erb_stage_progression(api, report_to_review)
 
     # Review notes section - FIXED: Use session state directly, no value parameter
     st.markdown("---")
@@ -604,7 +813,6 @@ def _show_review_interface(api: EnhancedAPIClient, report_id: int, pending_repor
                     if st.button(f"📝 Needs Work", key=f"comp_improve_{comp['id']}"):
                         st.warning("Marked as needs improvement - consider adding specific feedback above.")
 
-                        
 
 def _submit_review_decision(api: EnhancedAPIClient, report_id: int, decision: str):
     """Submit the review decision to the API"""
@@ -634,14 +842,10 @@ def _submit_review_decision(api: EnhancedAPIClient, report_id: int, decision: st
         if 'current_review_id' in st.session_state:
             del st.session_state.current_review_id
 
-        # DO NOT clear the notes from session state - they should persist
-
-        # ONLY clear cache for final decisions (approve/reject)
-        # DO NOT clear cache for "under_review" - it should stay in queue
-        if decision in ["approved", "rejected"]:
-            cache_key = f"reports_for_review_{st.session_state.user_id}"
-            if cache_key in st.session_state:
-                del st.session_state[cache_key]
+        # ✅ FIX: ALWAYS clear cache for ANY status change
+        cache_key = f"reports_for_review_{st.session_state.user_id}"
+        if cache_key in st.session_state:
+            del st.session_state[cache_key]
 
         # Let the user see the success message
         st.balloons()
@@ -703,7 +907,7 @@ def _show_review_settings(api: EnhancedAPIClient):
 def _format_date(date_str: str) -> str:
     """Format date string for display"""
     if not date_str:
-        return "N/A"
+        return ""
 
     try:
         if 'T' in date_str:

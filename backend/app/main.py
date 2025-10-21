@@ -2,9 +2,9 @@ from fastapi import FastAPI, Depends
 from fastapi.middleware.cors import CORSMiddleware
 import os
 import logging
-from datetime import datetime
-from requests import Session
-
+from datetime import datetime, UTC
+from sqlalchemy.orm import Session
+from contextlib import asynccontextmanager
 from backend.app.core.cache import cache_service
 # Import from new core structure
 from backend.app.core.config import settings
@@ -16,8 +16,6 @@ from backend.app.routers import audit, reports
 from backend.app.routers import password_reset
 from backend.app.core.exceptions import global_exception_handler, AppException
 
-
-
 # Configure logging
 logging.basicConfig(
     level=logging.INFO,
@@ -25,46 +23,15 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-app = FastAPI(
-    title="Engineering Report Deck API",
-    description="Backend API for Engineering Report Deck Application",
-    version="1.0.0",
-    docs_url="/docs" if settings.environment != "production" else None,
-    redoc_url="/redoc" if settings.environment != "production" else None,
-)
 
 
-
-# Add global exception handler
-app.add_exception_handler(Exception, global_exception_handler)
-
-# Configure CORS
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=settings.allowed_origins,
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-# Include all routers
-app.include_router(auth.router, prefix="/api/v1", tags=["authentication"])
-app.include_router(reports.router, prefix="/api/v1", tags=["reports"])
-app.include_router(users.router, prefix="/api/v1", tags=["users"])
-app.include_router(admin.router, prefix="/api/v1", tags=["admin"])
-app.include_router(profile.router, prefix="/api/v1", tags=["profile"])
-app.include_router(stats.router, prefix="/api/v1", tags=["statistics"])
-app.include_router(audit.router, prefix="/api/v1", tags=["audit"])
-app.include_router(review.router, prefix="/api/v1", tags=["review"])
-app.include_router(health.router, prefix="/api/v1", tags=["health"])
-app.include_router(password_reset.router, prefix="/api/v1", tags=["Password Reset"])
-
-
-
-@app.on_event("startup")
-async def startup_event():
-    """Run on application startup"""
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup
     logger.info("Starting Engineering Report Deck API...")
+
+    # ✅ Run debug first to check and fix existing admin
+    debug_admin_creation()
 
     # Initialize database
     try:
@@ -93,10 +60,129 @@ async def startup_event():
         logger.warning("⚠️ Cache health check failed or not configured")
 
 
-@app.on_event("shutdown")
-async def shutdown_event():
-    """Run on application shutdown"""
+    yield
+
+
     logger.info("Shutting down Engineering Report Deck API...")
+
+
+
+
+app = FastAPI(
+    title="Engineering Report Deck API",
+    description="Backend API for Engineering Report Deck Application",
+    version="1.0.0",
+    docs_url="/docs" if settings.ENVIRONMENT != "production" else None,
+    redoc_url="/redoc" if settings.ENVIRONMENT != "production" else None,
+lifespan=lifespan,
+)
+
+# Add global exception handler
+app.add_exception_handler(Exception, global_exception_handler)
+
+# Configure CORS
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=settings.allowed_origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# Include all routers
+app.include_router(auth.router, prefix="/api/v1", tags=["authentication"])
+app.include_router(reports.router, prefix="/api/v1", tags=["reports"])
+app.include_router(users.router, prefix="/api/v1", tags=["users"])
+app.include_router(admin.router, prefix="/api/v1", tags=["admin"])
+app.include_router(profile.router, prefix="/api/v1", tags=["profile"])
+app.include_router(stats.router, prefix="/api/v1", tags=["statistics"])
+app.include_router(audit.router, prefix="/api/v1", tags=["audit"])
+app.include_router(review.router, prefix="/api/v1", tags=["review"])
+app.include_router(health.router, prefix="/api/v1", tags=["health"])
+app.include_router(password_reset.router, prefix="/api/v1", tags=["Password Reset"])
+
+
+def debug_admin_creation():
+    """Debug function to check admin creation variables"""
+    from backend.app.core.database import SessionLocal
+    from backend.app.models import models
+
+    db = SessionLocal()
+    try:
+        logger.info("🔍 DEBUG: Checking admin creation variables...")
+        logger.info(f"🔍 DEBUG: ADMIN_USERNAME = {settings.ADMIN_USERNAME}")
+        logger.info(f"🔍 DEBUG: ADMIN_FULL_NAME = '{settings.ADMIN_FULL_NAME}'")
+        logger.info(f"🔍 DEBUG: ADMIN_EMAIL = {settings.ADMIN_EMAIL}")
+
+        # Check if admin exists and what their full_name is
+        admin_user = db.query(models.User).filter(models.User.username == settings.ADMIN_USERNAME).first()
+        if admin_user:
+            logger.info(f"🔍 DEBUG: Existing admin user found!")
+            logger.info(f"🔍 DEBUG: Current full_name = '{admin_user.full_name}'")
+            logger.info(f"🔍 DEBUG: Current email = '{admin_user.email}'")
+            logger.info(f"🔍 DEBUG: Current role = '{admin_user.role}'")
+
+            # ✅ FIX: Update the existing admin's full_name if it's None
+            if admin_user.full_name is None:
+                logger.info("🔧 FIX: Updating admin user with missing full_name...")
+                admin_user.full_name = settings.ADMIN_FULL_NAME
+                db.commit()
+                logger.info(f"🔧 FIX: Updated admin full_name to '{settings.ADMIN_FULL_NAME}'")
+        else:
+            logger.info("🔍 DEBUG: No admin user found - will create new one")
+
+    except Exception as e:
+        logger.error(f"🔍 DEBUG: Error in debug function: {e}")
+        db.rollback()
+    finally:
+        db.close()
+
+
+def create_admin_user():
+    from backend.app.core.database import SessionLocal
+    from backend.app.models import models
+    from backend.app.utils.utilities import hash_password
+
+    db = SessionLocal()
+    try:
+        admin_username = settings.ADMIN_USERNAME
+        admin_full_name = settings.ADMIN_FULL_NAME
+        admin_password = settings.ADMIN_PASSWORD
+        admin_email = settings.ADMIN_EMAIL
+
+        if admin_username and admin_password:
+            existing_admin = db.query(models.User).filter(models.User.username == admin_username).first()
+            if not existing_admin:
+                admin_user = models.User(
+                    username=admin_username,
+                    full_name=admin_full_name,
+                    email=admin_email,
+                    hashed_password=hash_password(admin_password),
+                    role="admin",
+                    is_verified=True
+                )
+                db.add(admin_user)
+                db.commit()
+                logger.info(f"✅ Admin user '{admin_username}' created with full_name: '{admin_full_name}'")
+            else:
+                # ✅ FIX: Update existing admin if full_name is missing
+                if existing_admin.full_name is None:
+                    existing_admin.full_name = admin_full_name
+                    db.commit()
+                    logger.info(f"🔧 Updated existing admin user with full_name: '{admin_full_name}'")
+                else:
+                    logger.info(
+                        f"ℹ️ Admin user '{admin_username}' already exists with full_name: '{existing_admin.full_name}'")
+    except Exception as e:
+        logger.error(f"❌ Admin user creation failed: {e}")
+        db.rollback()
+    finally:
+        db.close()
+
+
+
+
+
 
 
 @app.get("/")
@@ -119,57 +205,13 @@ async def health_check():
 
     return {
         "status": overall_health,
-        "timestamp": datetime.utcnow().isoformat(),
+        "timestamp": datetime.now(UTC).isoformat(),
         "services": services,
         "version": "1.0.0"
     }
 
 
-# ✅ Admin creation function
-def create_admin_user():
-    import os
-    from backend.app.core.database import SessionLocal
-    from backend.app.models import models
-    from backend.app.utils.utilities import hash_password
-    from dotenv import load_dotenv
-
-    load_dotenv()
-
-    db = SessionLocal()
-    try:
-        admin_username = os.getenv("ADMIN_USERNAME")
-        admin_password = os.getenv("ADMIN_PASSWORD")
-        admin_email = os.getenv("ADMIN_EMAIL")
-
-        if admin_username and admin_password:
-            existing_admin = db.query(models.User).filter(models.User.username == admin_username).first()
-            if not existing_admin:
-                admin_user = models.User(
-                    username=admin_username,
-                    email=admin_email,
-                    hashed_password=hash_password(admin_password),
-                    role="admin",
-                    is_verified=True
-                )
-                db.add(admin_user)
-                db.commit()
-                logger.info(f"✅ Admin user '{admin_username}' created automatically")
-            else:
-                logger.info(f"ℹ️ Admin user '{admin_username}' already exists")
-    except Exception as e:
-        logger.warning(f"⚠️ Admin creation skipped: {e}")
-    finally:
-        db.close()
-
-
-if __name__ == "__main__":
-    import uvicorn
-
-    port = int(os.environ.get("PORT", 8000))
-    uvicorn.run(app, host="0.0.0.0", port=port)
-
 #################TEMPORARY DEBUG CODE##################
-# Add this temporary debug endpoint to backend/main.py
 @app.get("/debug/users")
 def debug_users(db: Session = Depends(get_db)):
     """Debug endpoint to check all users and their roles"""
@@ -179,7 +221,7 @@ def debug_users(db: Session = Depends(get_db)):
         return {"users": users}
     return {"users": []}
 
-# Add this to your main.py or any router temporarily
+
 @app.get("/debug/user/{email}")
 def debug_user(email: str, db: Session = Depends(get_db)):
     """Debug endpoint to check user password hash"""
@@ -188,6 +230,7 @@ def debug_user(email: str, db: Session = Depends(get_db)):
     if user:
         return {
             "username": user.username,
+            "full_name": user.full_name,
             "email": user.email,
             "hashed_password": user.hashed_password,
             "hashed_password_length": len(user.hashed_password),
@@ -195,3 +238,10 @@ def debug_user(email: str, db: Session = Depends(get_db)):
             "is_active": user.is_active
         }
     return {"error": "User not found"}
+
+
+if __name__ == "__main__":
+    import uvicorn
+
+    port = int(os.environ.get("PORT", 8000))
+    uvicorn.run(app, host="0.0.0.0", port=port)

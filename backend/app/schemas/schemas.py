@@ -13,13 +13,34 @@ class ReportStatus(str, Enum):
     APPROVED = "approved"
     REJECTED = "rejected"
 
+
+# ✅ NEW: ERB Stage Enums
+class ERBStage(str, Enum):
+    DRAFT = "draft"
+    SUBMITTED = "submitted"
+    DESKTOP_ASSESSMENT = "desktop_assessment"
+    STANDARD_REVIEW = "standard_review"
+    PROFESSIONAL_ASSESSMENT = "professional_assessment"
+    PROFESSIONAL_REVIEW = "professional_review"
+    APPROVED = "approved"
+    REJECTED = "rejected"
+
+
+class StageStatus(str, Enum):
+    NOT_STARTED = "not_started"
+    IN_PROGRESS = "in_progress"
+    COMPLETED = "completed"
+
+
 # ---------------- TOKEN SCHEMAS ----------------
 class Token(BaseModel):
     access_token: str
     token_type: str
 
+
 class TokenData(BaseModel):
     username: Optional[str] = None
+
 
 # -------- USERS --------
 
@@ -38,7 +59,6 @@ class UserCreate(BaseModel):
             raise ValueError('Username must be alphanumeric')
         return v
 
-
     @field_validator('password')
     def validate_password(cls, v):
         if not any(c.isupper() for c in v):
@@ -53,6 +73,7 @@ class UserCreate(BaseModel):
 
         return v
 
+
 # User Roles Enum
 class UserRole(str, Enum):
     ADMIN = "admin"
@@ -61,6 +82,7 @@ class UserRole(str, Enum):
     TECHNOLOGIST = "technologist"
     TECHNICIAN = "technician"
     CANDIDATE = "candidate"
+
 
 # Enhanced User Schemas
 class UserBase(BaseModel):
@@ -79,9 +101,10 @@ class UserResponse(UserBase):
     class Config:
         from_attributes = True
 
+
 class UserUpdate(BaseModel):
     email: Optional[EmailStr] = None
-    full_name: str
+    full_name: Optional[str] = None
     role: Optional[UserRole] = None
     is_active: Optional[bool] = None
     is_verified: Optional[bool] = None
@@ -92,11 +115,13 @@ class UserUpdate(BaseModel):
             raise ValueError('Email must be at least 5 characters')
         return v
 
+
 # -------- COMPETENCIES --------
 class CompetencyCreate(BaseModel):
     competency_key: str
     competency_title: str
     user_response: str
+
 
 class CompetencyResponse(CompetencyCreate):
     id: int
@@ -104,22 +129,34 @@ class CompetencyResponse(CompetencyCreate):
     class Config:
         from_attributes = True
 
+
 # -------- REPORTS --------
 
 class ReportBase(BaseModel):
     title: str
     content: Optional[str] = None
 
+
 # ✅ FIXED: Only ONE ReportCreate class
 class ReportCreate(ReportBase):
     competencies: List[CompetencyCreate]
     status: ReportStatus = ReportStatus.DRAFT  # ✅ Add status with default
+
 
 # ✅ FIXED: Only ONE ReportResponse class
 class ReportResponse(ReportBase):
     id: int
     owner_id: int
     status: ReportStatus  # ✅ Include status in response
+    erb_stage: ERBStage  # ✅ NEW: ERB stage
+    current_stage_status: StageStatus  # ✅ NEW: Stage status
+
+    # ✅ NEW: Stage timestamps
+    desktop_assessment_started: Optional[datetime] = None
+    standard_review_started: Optional[datetime] = None
+    professional_assessment_started: Optional[datetime] = None
+    professional_review_started: Optional[datetime] = None
+
     submitted_at: Optional[datetime] = None
     reviewed_at: Optional[datetime] = None
     reviewed_by: Optional[int] = None
@@ -128,12 +165,18 @@ class ReportResponse(ReportBase):
     created_at: datetime
     updated_at: Optional[datetime] = None
 
+    # Owner information
     owner_username: Optional[str] = None
     owner_full_name: Optional[str] = None
     owner_email: Optional[str] = None
 
+    # Reviewer information
+    reviewer_username: Optional[str] = None
+    reviewer_full_name: Optional[str] = None
+
     class Config:
         from_attributes = True
+
 
 class ReportUpdate(BaseModel):
     title: Optional[str] = None
@@ -141,10 +184,18 @@ class ReportUpdate(BaseModel):
     competencies: Optional[List[CompetencyCreate]] = None
     status: Optional[ReportStatus] = None  # ✅ Status can be updated
 
+
 # ✅ New schema for review actions
 class ReportReview(BaseModel):
     status: ReportStatus
     review_notes: Optional[str] = None
+
+
+# ✅ NEW: Schema for ERB stage progression
+class StageProgression(BaseModel):
+    next_stage: ERBStage
+    notes: Optional[str] = None
+    status: StageStatus = StageStatus.IN_PROGRESS
 
 
 # ✅ AUDIT LOG SCHEMAS
@@ -178,8 +229,10 @@ class AuditLogQuery(BaseModel):
     limit: int = 100
     offset: int = 0
 
+
 class PasswordResetRequest(BaseModel):
     email: EmailStr
+
 
 class PasswordResetConfirm(BaseModel):
     token: str
@@ -197,9 +250,11 @@ class PasswordResetConfirm(BaseModel):
             raise ValueError('Password must contain at least one digit')
         return v
 
+
 class PasswordResetResponse(BaseModel):
     message: str
     email: str
+
 
 class PasswordChange(BaseModel):
     current_password: str
@@ -210,12 +265,14 @@ class PasswordChange(BaseModel):
         # Reuse the same validation as PasswordResetConfirm
         return PasswordResetConfirm.validate_password(v)
 
+
 class StandardResponse(BaseModel):
     """Standard API response format"""
     success: bool
     message: str
     data: Optional[Any] = None
     error_code: Optional[str] = None
+
 
 class PaginatedResponse(BaseModel):
     """Paginated API response format"""
@@ -227,14 +284,17 @@ class PaginatedResponse(BaseModel):
     has_next: bool
     has_prev: bool
 
+
 class ListResponse(BaseModel):
     """List API response format"""
     data: List[Any]
     total: int
 
+
 class DetailResponse(BaseModel):
     """Detail API response format"""
     data: Any
+
 
 class VerifyEmail(BaseModel):
     token: str

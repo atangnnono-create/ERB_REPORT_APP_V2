@@ -293,6 +293,24 @@ class EnhancedAPIClient:
 
         return self._request_with_retry('POST', f'/api/v1/review/reports/{report_id}', json=payload)
 
+    def progress_erb_stage(self, report_id: int, next_stage: str, notes: str = None, status: str = "in_progress") -> \
+    Tuple[bool, Any]:
+        """Progress report through ERB stages"""
+        payload = {
+            "next_stage": next_stage,
+            "status": status
+        }
+        if notes:
+            payload["notes"] = notes
+
+        return self._request_with_retry('POST', f'/api/v1/review/reports/{report_id}/progress-stage', json=payload)
+
+    def get_stage_history(self, report_id: int) -> Tuple[bool, Any]:
+        """Get ERB stage history for a report"""
+        return self._request_with_retry('GET', f'/api/v1/review/reports/{report_id}/stage-history')
+
+
+
     # -------- Admin Methods --------
     def get_all_users(self) -> Tuple[bool, Any]:
         """Get all users (admin only)"""
