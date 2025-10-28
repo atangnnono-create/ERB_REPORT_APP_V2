@@ -485,6 +485,169 @@ class EmailService:
         subject = "🎉 Welcome to Engineering Report Deck!"
         return self.send_email(to_email, subject, html_content, text_content)
 
+    def send_report_submission_notification(self, admin_email: str, report_title: str, author_name: str,
+                                            report_id: int) -> Tuple[bool, str]:
+        """Notify admin about new report submission"""
+        html_content = self._create_email_template(
+            title="New ERB Report Submitted",
+            username="Admin",
+            main_content=f"""
+            <p>A new ERB report has been submitted for review and requires your attention.</p>
+
+            <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; border-left: 4px solid #3498db;">
+                <p><strong>Report Title:</strong> {report_title}</p>
+                <p><strong>Author:</strong> {author_name}</p>
+                <p><strong>Report ID:</strong> {report_id}</p>
+                <p><strong>Submitted:</strong> {datetime.now().strftime('%Y-%m-%d %H:%M')}</p>
+            </div>
+
+            <p>Please log in to the review dashboard to begin the assessment process.</p>
+            """,
+            button_text="Review Dashboard",
+            button_url=f"{self.config.base_url}/review"
+        )
+
+        text_content = f"""
+        New ERB Report Submitted
+
+        A new ERB report has been submitted for review:
+
+        Report: {report_title}
+        Author: {author_name}
+        Report ID: {report_id}
+        Submitted: {datetime.now().strftime('%Y-%m-%d %H:%M')}
+
+        Please log in to review this report.
+        """
+
+        subject = "📝 New ERB Report Submitted for Review"
+        return self.send_email(admin_email, subject, html_content, text_content)
+
+    def send_stage_completion_notification(self, author_email: str, author_name: str, report_title: str,
+                                           completed_stage: str, report_id: int) -> Tuple[bool, str]:
+        """Notify author about stage completion with progress visualization"""
+
+        # Define ERB stages in order
+        erb_stages = ["desktop_assessment", "standard_review", "professional_assessment", "professional_review"]
+
+        # Create progress visualization
+        progress_html = ""
+        current_index = erb_stages.index(completed_stage) if completed_stage in erb_stages else 0
+
+        for i, stage in enumerate(erb_stages):
+            stage_name = stage.replace("_", " ").title()
+            if i < current_index:
+                progress_html += f'<li style="color: #27ae60; margin: 10px 0;">✅ {stage_name} - Completed</li>'
+            elif i == current_index:
+                progress_html += f'<li style="color: #3498db; margin: 10px 0; font-weight: bold;">🔵 {stage_name} - Just Completed</li>'
+            else:
+                progress_html += f'<li style="color: #95a5a6; margin: 10px 0;">◯ {stage_name} - Pending</li>'
+
+        html_content = self._create_email_template(
+            title="ERB Report Progress Update",
+            username=author_name,
+            main_content=f"""
+            <p>Your ERB report has progressed to the next stage in the review process.</p>
+
+            <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; border-left: 4px solid #3498db;">
+                <p><strong>Report:</strong> {report_title}</p>
+                <p><strong>Completed Stage:</strong> {completed_stage.replace('_', ' ').title()}</p>
+                <p><strong>Report ID:</strong> {report_id}</p>
+            </div>
+
+            <h4 style="color: #2c3e50; margin-top: 25px;">Review Progress:</h4>
+            <ul style="list-style: none; padding-left: 0;">
+                {progress_html}
+            </ul>
+
+            <p>The review team is working through the remaining stages. You will be notified when the final decision is made.</p>
+            """,
+            button_text="View Report Status",
+            button_url=f"{self.config.base_url}/reports/{report_id}"
+        )
+
+        text_content = f"""
+        ERB Report Progress Update
+
+        Hello {author_name},
+
+        Your ERB report has progressed to the next stage:
+
+        Report: {report_title}
+        Completed Stage: {completed_stage.replace('_', ' ').title()}
+        Report ID: {report_id}
+
+        Current Progress:
+        - Desktop Assessment: {'Completed' if current_index >= 0 else 'Pending'}
+        - Standard Review: {'Completed' if current_index >= 1 else 'Pending'} 
+        - Professional Assessment: {'Completed' if current_index >= 2 else 'Pending'}
+        - Professional Review: {'Completed' if current_index >= 3 else 'Pending'}
+
+        Continue tracking your report progress on the platform.
+        """
+
+        subject = f"📊 ERB Report Progress - {completed_stage.replace('_', ' ').title()} Completed"
+        return self.send_email(author_email, subject, html_content, text_content)
+
+    def send_final_decision_notification(self, author_email: str, author_name: str, admin_email: str,
+                                         report_title: str, decision: str, report_id: int) -> Tuple[bool, str]:
+        """Notify author and admin about final decision"""
+
+        decision_color = "#27ae60" if decision == "approved" else "#e74c3c"
+        decision_emoji = "✅" if decision == "approved" else "❌"
+        decision_message = "Congratulations! Your engineering registration has been approved." if decision == "approved" else "Your report requires revisions before it can be approved."
+
+        html_content = self._create_email_template(
+            title=f"ERB Report {decision.title()}",
+            username=author_name,
+            main_content=f"""
+            <p>Your ERB report has completed the review process and a final decision has been made.</p>
+
+            <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; border-left: 4px solid {decision_color};">
+                <p><strong>Report:</strong> {report_title}</p>
+                <p><strong>Decision:</strong> <span style="color: {decision_color}; font-weight: bold; font-size: 18px;">
+                    {decision_emoji} {decision.upper()}
+                </span></p>
+                <p><strong>Report ID:</strong> {report_id}</p>
+                <p><strong>Decision Date:</strong> {datetime.now().strftime('%Y-%m-%d %H:%M')}</p>
+            </div>
+
+            <p style="margin-top: 20px; font-size: 16px;">{decision_message}</p>
+
+            {"<p>You can now proceed with the next steps in your engineering registration process.</p>" if decision == "approved" else "<p>Please review the feedback provided and resubmit your report for another review cycle.</p>"}
+            """,
+            button_text="View Report Details",
+            button_url=f"{self.config.base_url}/reports/{report_id}"
+        )
+
+        text_content = f"""
+        ERB Report {decision.title()}
+
+        Hello {author_name},
+
+        Your ERB report has been reviewed and a final decision has been made:
+
+        Report: {report_title}
+        Decision: {decision.upper()}
+        Report ID: {report_id}
+        Date: {datetime.now().strftime('%Y-%m-%d %H:%M')}
+
+        {decision_message}
+
+        {"You can now proceed with the next steps in your engineering registration process." if decision == "approved" else "Please review the feedback and resubmit your report."}
+        """
+
+        subject = f"{decision_emoji} ERB Report {decision.title()} - {report_title}"
+
+        # Send to both author and admin
+        success1, msg1 = self.send_email(author_email, subject, html_content, text_content)
+        success2, msg2 = self.send_email(admin_email, subject, html_content, text_content)
+
+        if success1 and success2:
+            return True, "Notifications sent to author and admin"
+        else:
+            return False, f"Author: {msg1 if not success1 else 'OK'}, Admin: {msg2 if not success2 else 'OK'}"
+
 
 # Global email service instance
 email_service = EmailService()

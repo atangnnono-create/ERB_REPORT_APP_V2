@@ -5,7 +5,7 @@ from io import BytesIO
 from datetime import datetime
 from frontend.utilities.comps import (engineer_competencies, technician_competencies, technologist_competencies)
 import enhanced_ai_service
-from utilities.utils import (export_to_docx, has_responses, sort_keys, enhanced_render_progress_dashboard)
+from utilities.utils import (export_to_docx, has_responses, sort_keys, render_progress_dashboard)
 from frontend.services.enhanced_api_client import EnhancedAPIClient
 from utilities.error_handling import ErrorHandler, LoadingState, with_loading
 from services.enhanced_state_manager import state_manager
@@ -227,6 +227,7 @@ def show_auto_save_controls():
             f"🕐 Last save: {st.session_state.get('last_save_time', datetime.now()).strftime('%H:%M:%S')}")
         st.sidebar.caption(f"📊 Save attempts: {st.session_state.get('auto_save_attempts', 0)}")
 
+
 def enhanced_submit_report(selected_role: str, competency_sections: dict):
     """Enhanced report submission with state manager cleanup"""
     # FIX: Add proper null check for responses
@@ -267,23 +268,35 @@ def enhanced_submit_report(selected_role: str, competency_sections: dict):
         ErrorHandler.show_error(validation_msg)
         return
 
-    with LoadingState("Submitting report..."):
-        success, result = api.create_report(payload)
+    # FINAL REPORT SUBMISSION - Use dedicated submit endpoint
+    if report_status == 'submitted':
+        with LoadingState("Submitting report for review..."):
+            success, result = api.submit_report_for_review(payload)  # Use new endpoint with full payload
 
-        if success and "id" in result:
-            st.balloons()
-            ErrorHandler.show_success(f"Report submitted successfully! (ID: {result['id']})")
+            if success and "id" in result:
+                st.balloons()
+                ErrorHandler.show_success(f"Report submitted for review! (ID: {result['id']})")
 
-            if report_status != 'draft':
+                # Clear session state for submitted reports
                 st.session_state.responses[selected_role] = {}
                 st.session_state.current_section = 0
                 state_manager.set_state("responses", st.session_state.responses, persist=True)
                 state_manager.set_state("current_section", 0, persist=True)
             else:
-                state_manager.set_state("responses", st.session_state.responses, persist=True)
+                ErrorHandler.show_error(f"Failed to submit report: {result.get('detail', 'Unknown error')}")
 
-        else:
-            ErrorHandler.show_error(f"Failed to submit report: {result.get('detail', 'Unknown error')}")
+    # DRAFT REPORT - Use existing create endpoint
+    else:
+        with LoadingState("Saving report as draft..."):
+            success, result = api.create_report(payload)
+
+            if success and "id" in result:
+                st.balloons()
+                ErrorHandler.show_success(f"Report saved as draft! (ID: {result['id']}) - You can continue editing")
+                state_manager.set_state("responses", st.session_state.responses, persist=True)
+            else:
+                ErrorHandler.show_error(f"Failed to save draft: {result.get('detail', 'Unknown error')}")
+
 
 
 def initialize_session_state():
@@ -510,7 +523,8 @@ def create_report_ui():
         st.session_state.responses[selected_role] = {}
 
     # Progress dashboard
-    enhanced_render_progress_dashboard(competency_sections, st.session_state.selected_role)
+    with st.sidebar:
+        render_progress_dashboard(competency_sections, st.session_state.selected_role)
 
     # Auto-Save Check
     auto_save_check()

@@ -1,8 +1,9 @@
 from datetime import datetime, timedelta
-from typing import Tuple, List
+from typing import Tuple, List, Optional
 from sqlalchemy.orm import Session
 from sqlalchemy.orm.strategy_options import joinedload
-
+from backend.app.services.email_service import email_service
+from backend.app.core.config import settings
 from backend.app.models import models
 from backend.app.schemas import schemas
 from backend.app.core import loggings
@@ -141,6 +142,29 @@ def get_report(db: Session, report_id: int, user_id: int):
         raise_not_found("Report")
     return report
 
+def get_user_reports_paginated(db: Session, user_id: int, skip: int = 0, limit: int = 50):
+    """Get paginated reports for specific user with eager loading"""
+    return db.query(models.Report).options(
+        joinedload(models.Report.competencies),
+        joinedload(models.Report.owner),
+        joinedload(models.Report.reviewer)
+    ).filter(models.Report.owner_id == user_id).offset(skip).limit(limit).all()
+
+
+def get_all_reports_paginated(db: Session, skip: int = 0, limit: int = 50):
+    """Get ALL paginated reports (admin only)"""
+    return db.query(models.Report).options(
+        joinedload(models.Report.competencies),
+        joinedload(models.Report.owner),
+        joinedload(models.Report.reviewer)
+    ).offset(skip).limit(limit).all()
+
+
+def get_report_by_id(db: Session, report_id: int):
+    """Get report by ID without ownership check (for admin use)"""
+    return db.query(models.Report).filter(models.Report.id == report_id).first()
+
+
 def delete_report(db: Session, report: models.Report):
     db.delete(report)
     db.commit()
@@ -249,22 +273,48 @@ def review_report(db: Session, report_id: int, review: schemas.ReportReview, rev
     return db_report
 
 # ✅ New function to submit report for review
-def submit_report(db: Session, report_id: int, user_id: int):
-    db_report = db.query(models.Report).filter(
-        models.Report.id == report_id,
-        models.Report.owner_id == user_id
-    ).first()
+def submit_report_for_review(db: Session, report_data: schemas.ReportSubmit, user_id: int):
+    """Create report and initialize ERB stages atomically for final submission"""
 
-    if not db_report:
-        return None
+    # Create the report first
+    db_report = models.Report(
+        title=report_data.title,
+        content=report_data.content,
+        owner_id=user_id,
+        status=schemas.ReportStatus.SUBMITTED,  # Set as submitted immediately
+        erb_stage=schemas.ERBStage.DESKTOP_ASSESSMENT,
+        current_stage_status=schemas.StageStatus.IN_PROGRESS,
+        submitted_at=func.now()
+    )
+    db.add(db_report)
+    db.commit()
+    db.refresh(db_report)
 
-    db_report.status = schemas.ReportStatus.SUBMITTED
-    db_report.erb_stage = schemas.ERBStage.DESKTOP_ASSESSMENT
-    db_report.current_stage_status = schemas.StageStatus.NOT_STARTED
-    db_report.submitted_at = func.now()
+    # Create competencies for the report
+    for comp in report_data.competencies:
+        competency = models.Competency(
+            competency_key=comp.competency_key,
+            competency_title=comp.competency_title,
+            user_response=comp.user_response,
+            owner_id=user_id,
+            report_id=db_report.id
+        )
+        db.add(competency)
 
     db.commit()
     db.refresh(db_report)
+
+    # NEW: Send admin notification
+    admin_email = settings.ADMIN_EMAIL
+    author = db_report.owner
+
+    email_service.send_report_submission_notification(
+        admin_email=admin_email,
+        report_title=db_report.title,
+        author_name=author.full_name,
+        report_id=db_report.id
+    )
+
     return db_report
 
 
@@ -296,18 +346,13 @@ def progress_erb_stage(db: Session, report_id: int, progression: schemas.StagePr
         db_report.reviewed_at = now
         db_report.current_stage_status = schemas.StageStatus.COMPLETED
 
-    # Add progression notes
-    if progression.notes:
-        note_prefix = f"\n--- ERB Stage: {progression.next_stage.value.upper()} ---\n"
-        if db_report.review_notes:
-            db_report.review_notes += note_prefix + progression.notes
-        else:
-            db_report.review_notes = note_prefix + progression.notes
+    # SIMPLE STORAGE - Frontend manages timeline formatting
+    if progression.notes and progression.notes.strip():
+        db_report.review_notes = progression.notes
 
     db.commit()
     db.refresh(db_report)
     return db_report
-
 
 
 
@@ -372,3 +417,39 @@ def change_user_password(db: Session, user_id: int, current_password: str, new_p
         return False
 
     return update_user_password(db, user_id, new_password)
+
+
+def _get_current_stage_before_progression(current_stage: schemas.ERBStage,
+                                          next_stage: schemas.ERBStage) -> schemas.ERBStage:
+    """Determine which stage we're completing (current stage) before progressing to next stage"""
+    stage_order = [
+        schemas.ERBStage.DESKTOP_ASSESSMENT,
+        schemas.ERBStage.STANDARD_REVIEW,
+        schemas.ERBStage.PROFESSIONAL_ASSESSMENT,
+        schemas.ERBStage.PROFESSIONAL_REVIEW
+    ]
+
+    if next_stage in stage_order:
+        next_index = stage_order.index(next_stage)
+        if next_index > 0:
+            return stage_order[next_index - 1]  # Return the previous stage
+
+    # Fallback: if we can't determine, use the next_stage
+    return next_stage
+
+
+# Add this function to your crud.py file
+
+def assign_reviewer(db: Session, report_id: int, reviewer_id: Optional[int], current_user_id: int) -> models.Report:
+    """Assign or remove a reviewer from a report without changing status"""
+    db_report = db.query(models.Report).filter(models.Report.id == report_id).first()
+    if not db_report:
+        return None
+
+    # Update the reviewer assignment
+    db_report.reviewed_by = reviewer_id
+    db_report.updated_at = func.now()
+
+    db.commit()
+    db.refresh(db_report)
+    return db_report

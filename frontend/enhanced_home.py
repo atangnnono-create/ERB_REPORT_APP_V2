@@ -10,6 +10,7 @@ from utilities.error_handling import ErrorHandler, LoadingState, display_network
 from regular_user_dashboard import show_dashboard
 import functools
 from report_review_separate import review_dashboard
+from resources_marketplace import resources_marketplace
 
 
 
@@ -210,7 +211,7 @@ def ai_assistant_page():
 
 def handle_authentication():
     """Handle login/registration flow"""
-    login_tab, register_tab, forgot_tab = st.tabs(["🔑 Login", "📝 Register", "😉 Forgot Password"])
+    login_tab, register_tab, forgot_tab = st.tabs(["🔑 Login", "📝 Register", "😉 Forgot Password?"])
 
     with register_tab:
         auth.register_ui(api)
@@ -237,7 +238,7 @@ def main_app():
     st.sidebar.title("🧭 Navigation")
 
     # Main pages for all users
-    main_pages = ["📊 Dashboard", "📝 Create Report", "📋 My Reports", "👤 Profile"]
+    main_pages = ["📊 Dashboard", "📝 Create Report", "📋 My Reports", "👤 Profile", "🛍️ Resources"]
 
     # Role-specific pages
     if "ai_features" in permissions:
@@ -272,13 +273,10 @@ def main_app():
         "📝 Create Report": create_report_page,
         "📋 My Reports": reports_page,
         "👤 Profile": profile_page,
+        "🛍️ Resources": resources_page,
         "🤖 AI Assistant": ai_assistant_page,
-        "👀 Review Dashboard": lambda: review_dashboard(api),  # Use the imported function
-        "📈 All Reports": all_reports_page,
-        "👥 User Management": user_management_page,  # ← Now uses enhanced_admin_dashboard
-        "⚙️ Admin Settings": admin_settings_page,  # ← Now uses enhanced_admin_dashboard
-        "👑 Admin Dashboard": lambda: enhanced_admin_dashboard(api),  # If using single entry
-        "📊 Analytics Dashboard": lambda: enhanced_admin_dashboard(api),  # Alternative name
+        "👀 Review Dashboard": lambda: review_dashboard(api),
+        "👑 Admin Dashboard": admin_dashboard_wrapper,  # Single admin entry point
         "ℹ️ About": about_page,
         "📞 Contact": contact_page
     }
@@ -288,9 +286,33 @@ def main_app():
     page_function()
 
 
+def admin_dashboard_wrapper():
+    """Wrapper function to ensure API client is properly authenticated before calling admin dashboard"""
+    # Ensure API client has the current token
+    if 'token' in st.session_state and st.session_state.token:
+        api.set_token(st.session_state.token)
+        print(f"🔍 ADMIN WRAPPER: Token set successfully for user {st.session_state.username}")
+    else:
+        st.error("❌ Authentication error: No token found. Please login again.")
+        return
+
+    # Check if user has admin permissions
+    user_role = st.session_state.get("user_role", "")
+    if user_role not in ['admin']:
+        st.error("🔒 Access denied. Administrator privileges required.")
+        return
+
+    # Call the enhanced admin dashboard
+    enhanced_admin_dashboard(api)
+
+
 def all_users_dashboard():
     """Enhanced dashboard with overview"""
     show_dashboard(api)
+
+def resources_page():
+    """Resources & Marketplace page"""
+    resources_marketplace()
 
 def create_report_page():
     """Enhanced create report with verification check"""
@@ -312,26 +334,6 @@ def profile_page():
     """Profile page"""
     user_profile.profile_page(api)
 
-
-def all_reports_page():
-    """All reports view for admins/reviewers"""
-    enhanced_admin_dashboard(api)
-
-
-def user_management_page():
-    """User management for admins"""
-    enhanced_admin_dashboard(api)
-
-
-def admin_settings_page():
-    """Admin settings"""
-    enhanced_admin_dashboard(api)
-
-
-def audit_dashboard_page():
-    """Audit dashboard"""
-    from admin_audit_dashboard import audit_dashboard
-    audit_dashboard(api)
 
 
 def about_page():

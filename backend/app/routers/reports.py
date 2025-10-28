@@ -44,6 +44,26 @@ def list_reports(db: Session = Depends(database.get_db),
                   Depends(get_current_user), ):
     return crud.get_reports(db, current_user.id)
 
+
+@router.get("/paginated", response_model=schemas.PaginatedReportsResponse)
+def list_reports_paginated(
+        skip: int = 0,
+        limit: int = 50,
+        db: Session = Depends(database.get_db),
+        current_user: models.User = Depends(get_current_user)
+):
+    """Get user's reports with pagination"""
+    reports = crud.get_user_reports_paginated(db, current_user.id, skip, limit)
+    total_count = db.query(models.Report).filter(models.Report.owner_id == current_user.id).count()
+
+    return {
+        "reports": reports,
+        "total_count": total_count,
+        "page": (skip // limit) + 1,
+        "page_size": limit
+    }
+
+
 # READ (single report by ID)
 @router.get("/{report_id}", response_model=schemas.ReportResponse)
 def get_report(report_id: int, db: Session =

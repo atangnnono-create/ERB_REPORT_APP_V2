@@ -11,7 +11,7 @@ from backend.app.core.config import settings
 from backend.app.core.database import init_db, check_database_health, get_db, Base
 from backend.app.core.loggings import setup_logging
 from backend.app.core.exceptions import global_exception_handler
-from backend.app.routers import users, auth, admin, profile, stats, review, health
+from backend.app.routers import auth, admin, profile, stats, review, health
 from backend.app.routers import audit, reports
 from backend.app.routers import password_reset
 from backend.app.core.exceptions import global_exception_handler, AppException
@@ -92,7 +92,6 @@ app.add_middleware(
 # Include all routers
 app.include_router(auth.router, prefix="/api/v1", tags=["authentication"])
 app.include_router(reports.router, prefix="/api/v1", tags=["reports"])
-app.include_router(users.router, prefix="/api/v1", tags=["users"])
 app.include_router(admin.router, prefix="/api/v1", tags=["admin"])
 app.include_router(profile.router, prefix="/api/v1", tags=["profile"])
 app.include_router(stats.router, prefix="/api/v1", tags=["statistics"])

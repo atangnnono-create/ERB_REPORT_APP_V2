@@ -259,6 +259,14 @@ class EnhancedAPIClient:
         """Get a specific report by ID"""
         return self._request_with_retry('GET', f'/api/v1/reports/{report_id}')
 
+    def get_my_reports_paginated(self, skip: int = 0, limit: int = 50) -> Tuple[bool, Any]:
+        """Get paginated user reports with total count"""
+        success, data = self._request_with_retry(
+            'GET',
+            f'/api/v1/reports/paginated?skip={skip}&limit={limit}'
+        )
+        return success, data
+
     def fetch_reports(self) -> Tuple[bool, List[Dict]]:
         """Fetch reports with pagination support"""
         success, data = self._request_with_retry('GET', '/api/v1/reports/')
@@ -273,13 +281,25 @@ class EnhancedAPIClient:
         print(f"🔍 API CLIENT: delete_report result: {result}")
         return result
 
-    def get_all_reports(self) -> Tuple[bool, Any]:
-        """Get all reports (admin/reviewer only)"""
-        return self._request_with_retry('GET', '/api/v1/admin/reports')
+    def delete_report_as_admin(self, report_id: int) -> Tuple[bool, Dict[str, Any]]:
+        """Delete any report (admin only) - bypasses ownership checks"""
+        print(f"🔍 API CLIENT: delete_report_as_admin called for report {report_id}")
+        result = self._request_with_retry('DELETE', f'/api/v1/admin/reports/{report_id}')
+        print(f"🔍 API CLIENT: delete_report_as_admin result: {result}")
+        return result
 
-    def submit_report_for_review(self, report_id: int) -> Tuple[bool, Any]:
-        """Submit a report for review"""
-        return self._request_with_retry('PUT', f'/api/v1/review/reports/{report_id}/submit')
+    def get_all_reports_paginated(self, skip: int = 0, limit: int = 50) -> Tuple[bool, Any]:
+        """Get paginated reports with total count"""
+        success, data = self._request_with_retry('GET', f'/api/v1/admin/reports?skip={skip}&limit={limit}')
+
+        if success and isinstance(data, dict) and 'reports' in data:
+            return True, data
+        return success, data
+
+
+    def submit_report_for_review(self, report_data: dict) -> Tuple[bool, Any]:
+        """Submit a report for review - now accepts full report data instead of report_id"""
+        return self._request_with_retry('PUT', '/api/v1/review/reports/submit', json=report_data)
 
     def get_reports_for_review(self) -> Tuple[bool, Any]:
         """Get reports pending review (reviewer/admin only)"""
@@ -305,6 +325,22 @@ class EnhancedAPIClient:
 
         return self._request_with_retry('POST', f'/api/v1/review/reports/{report_id}/progress-stage', json=payload)
 
+    # Add this method to your EnhancedAPIClient class in the "Report Management" section
+
+    def assign_reviewer(self, report_id: int, reviewer_id: Optional[int]) -> Tuple[bool, Any]:
+        """Assign or remove a reviewer from a report"""
+        payload = {}
+        if reviewer_id:
+            payload["reviewer_id"] = reviewer_id
+        else:
+            payload["reviewer_id"] = None  # Explicitly remove reviewer
+
+        return self._request_with_retry(
+            'PUT',
+            f'/api/v1/review/reports/{report_id}/assign',
+            json=payload
+        )
+
     def get_stage_history(self, report_id: int) -> Tuple[bool, Any]:
         """Get ERB stage history for a report"""
         return self._request_with_retry('GET', f'/api/v1/review/reports/{report_id}/stage-history')
@@ -312,9 +348,14 @@ class EnhancedAPIClient:
 
 
     # -------- Admin Methods --------
-    def get_all_users(self) -> Tuple[bool, Any]:
-        """Get all users (admin only)"""
-        return self._request_with_retry('GET', '/api/v1/admin/users')
+    def get_all_users_paginated(self, skip: int = 0, limit: int = 50) -> Tuple[bool, Any]:
+        """Get paginated users with total count"""
+        success, data = self._request_with_retry('GET', f'/api/v1/admin/users?skip={skip}&limit={limit}')
+
+        if success and isinstance(data, dict) and 'users' in data:
+            return True, data
+        return success, data
+
 
     def update_user_role(self, user_id: int, new_role: str) -> bool:
         """Update user role with validation"""
@@ -424,6 +465,11 @@ class EnhancedAPIClient:
             '/api/v1/audit/cleanup',
             params={"days_to_keep": days_to_keep}
         )
+
+    def get_quick_stats(self) -> Tuple[bool, Any]:
+        """Get lightweight quick stats"""
+        return self._request_with_retry('GET', '/api/v1/admin/quick-stats')
+
 
     # Health check method
     def health_check(self) -> Tuple[bool, Any]:

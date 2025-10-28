@@ -1,7 +1,8 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session, joinedload
 from typing import List
-
+from backend.app.services.email_service import email_service
+from backend.app.core.config import settings
 from backend.app.core.database import get_db
 from backend.app.models import models
 from backend.app.schemas import schemas
@@ -28,6 +29,21 @@ def get_reports_for_review(
 
     return reports
 
+# Add this endpoint to your review.py file
+
+@router.put("/reports/{report_id}/assign", response_model=schemas.ReportResponse)
+def assign_reviewer(
+    report_id: int,
+    assignment: schemas.ReviewerAssignment,  # We'll need to create this schema
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(require_permission(Permission.REPORT_REVIEW))
+):
+    """Assign or remove a reviewer from a report (without changing status or adding notes)"""
+    db_report = crud.assign_reviewer(db, report_id, assignment.reviewer_id, current_user.id)
+    if not db_report:
+        raise HTTPException(status_code=404, detail="Report not found")
+    return db_report
+
 @router.post("/reports/{report_id}", response_model=schemas.ReportResponse)
 def review_report(
     report_id: int,
@@ -41,14 +57,14 @@ def review_report(
         raise HTTPException(status_code=404, detail="Report not found")
     return db_report
 
-@router.put("/reports/{report_id}/submit", response_model=schemas.ReportResponse)
+@router.put("/reports/submit", response_model=schemas.ReportResponse)
 def submit_report_for_review(
-    report_id: int,
+    report_data: schemas.ReportSubmit,  # Changed from report_id to full report data
     db: Session = Depends(get_db),
     current_user: models.User = Depends(require_permission(Permission.REPORT_WRITE))
 ):
-    """Submit a report for review"""
-    db_report = crud.submit_report(db, report_id, current_user.id)
+    """Submit a report for review - creates report and initializes ERB stages atomically"""
+    db_report = crud.submit_report_for_review(db, report_data, current_user.id)  # Updated function call
     if not db_report:
         raise HTTPException(status_code=404, detail="Report not found")
     return db_report
@@ -94,6 +110,29 @@ def progress_erb_stage(
     db_report = crud.progress_erb_stage(db, report_id, progression, current_user.id)
     if not db_report:
         raise HTTPException(status_code=404, detail="Report not found")
+
+    if progression.status == "completed" and progression.next_stage != "approved" and progression.next_stage != "rejected":
+        author = db_report.owner
+        email_service.send_stage_completion_notification(
+            author_email=author.email,
+            author_name=author.full_name,
+            report_title=db_report.title,
+            completed_stage=progression.next_stage,
+            report_id=db_report.id
+        )
+
+        # NEW: Send final decision notification
+    if progression.next_stage in ["approved", "rejected"]:
+        author = db_report.owner
+        email_service.send_final_decision_notification(
+            author_email=author.email,
+            author_name=author.full_name,
+            admin_email=settings.ADMIN_EMAIL,
+            report_title=db_report.title,
+            decision=progression.next_stage,
+            report_id=db_report.id
+        )
+
     return db_report
 
 

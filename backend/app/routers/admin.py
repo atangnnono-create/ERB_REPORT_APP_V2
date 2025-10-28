@@ -1,33 +1,44 @@
-
-from typing import List
+from sqlalchemy import func, distinct, text
+from datetime import timedelta, datetime
+from typing import List, Any
 from backend.app.models import models
 from backend.app.schemas import schemas
 from backend.app.crud import crud
 from backend.app.core.security import require_permission, Permission
-
-
-from datetime import datetime
 import time
+from backend.app.models.models import Report
 import os
+import logging
 import psutil
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, status, Request
 from sqlalchemy.orm import Session
-from sqlalchemy import text
 from backend.app.core.database import get_db
 from backend.app.core.config import settings
+from backend.app.utils.utilities import audit_service, AuditActions
 
 
+logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/admin", tags=["Admin"])
 
-@router.get("/users", response_model=List[schemas.UserResponse])
+
+@router.get("/users", response_model=schemas.PaginatedUsersResponse)
 def list_users(
     skip: int = 0,
-    limit: int = 100,
+    limit: int = 50,
     db: Session = Depends(get_db),
     current_user: models.User = Depends(require_permission(Permission.USER_MANAGE))
 ):
-    """List all users (admin only)"""
-    return crud.get_users(db, skip=skip, limit=limit)
+    """List users with pagination and total count"""
+    users = crud.get_users(db, skip=skip, limit=limit)
+    total_count = db.query(func.count(models.User.id)).scalar()
+
+    return {
+        "users": users,
+        "total_count": total_count,
+        "page": skip // limit + 1,
+        "page_size": limit
+    }
+
 
 def get_user(
     user_id: int,
@@ -53,15 +64,113 @@ def update_user(
         raise HTTPException(status_code=404, detail="User not found")
     return db_user
 
-@router.get("/reports", response_model=List[schemas.ReportResponse])
+############################ REPORTS #####################################################
+
+@router.get("/reports", response_model=schemas.PaginatedReportsResponse)
 def list_all_reports(
+    skip: int = 0,
+    limit: int = 50,
     db: Session = Depends(get_db),
     current_user: models.User = Depends(require_permission(Permission.REPORT_MANAGE))
 ):
-    """View all reports (admin/reviewer only)"""
-    return crud.get_all_reports(db)
+    """View all reports with pagination and total count"""
+    reports = crud.get_all_reports_paginated(db, skip=skip, limit=limit)
+    total_count = db.query(func.count(models.Report.id)).scalar()
+
+    return {
+        "reports": reports,
+        "total_count": total_count,
+        "page": skip // limit + 1,
+        "page_size": limit
+    }
 
 
+@router.get("/quick-stats")
+def get_quick_stats(
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(require_permission(Permission.REPORT_REVIEW))
+):
+    """Lightweight quick stats - counts only, no full data"""
+    # User counts
+    total_users = db.query(func.count(models.User.id)).scalar()
+    active_users_today = db.query(func.count(distinct(Report.owner_id))).filter(
+        Report.created_at >= datetime.now().date()
+    ).scalar()
+    new_users_7d = db.query(func.count(models.User.id)).filter(
+        models.User.created_at >= datetime.now() - timedelta(days=7)
+    ).scalar()
+
+    # Report counts
+    total_reports = db.query(func.count(models.Report.id)).scalar()
+    new_reports_7d = db.query(func.count(models.Report.id)).filter(
+        models.Report.created_at >= datetime.now() - timedelta(days=7)
+    ).scalar()
+
+    # Approval rate
+    approved_reports = db.query(func.count(models.Report.id)).filter(
+        models.Report.status == 'approved'
+    ).scalar()
+    reviewed_reports = db.query(func.count(models.Report.id)).filter(
+        models.Report.status.in_(['approved', 'rejected'])
+    ).scalar()
+    approval_rate = (approved_reports / reviewed_reports * 100) if reviewed_reports > 0 else 0
+
+    return {
+        'total_users': total_users,
+        'active_users_today': active_users_today,
+        'new_users_7d': new_users_7d,
+        'total_reports': total_reports,
+        'new_reports_7d': new_reports_7d,
+        'approval_rate': approval_rate,
+        'avg_response_time': 2.5  # Placeholder
+    }
+
+
+
+
+@router.delete("/reports/{report_id}")
+def delete_report_as_admin(
+        report_id: int,
+        request: Request,
+        db: Session = Depends(get_db),
+        current_user: models.User = Depends(require_permission(Permission.REPORT_MANAGE))
+):
+    """Delete any report (admin only) - bypasses ownership checks"""
+    try:
+        # Use the generic getter (this is the new function)
+        db_report = crud.get_report_by_id(db, report_id)  # ← CHANGED TO get_report_by_id
+        if not db_report:
+            raise HTTPException(status_code=404, detail="Report not found")
+
+        # Store report info for audit log before deletion
+        report_title = db_report.title
+        report_owner = db_report.owner.username if db_report.owner else "Unknown"
+
+        # Delete the report
+        crud.delete_report(db, db_report)
+
+        audit_service.log_action(
+            db=db,
+            action=AuditActions.REPORT_DELETE,
+            user_id=current_user.id,
+            username=current_user.username,
+            resource_type="report",
+            resource_id=report_id,
+            details={
+                "report_title": report_title,
+                "report_owner": report_owner,
+                "admin_username": current_user.username,
+                "deletion_type": "admin_forced_deletion"
+            },
+            request=request
+        )
+
+        return {"detail": "Report deleted successfully"}
+
+    except Exception as e:
+        # Log the actual error for debugging
+        logger.error(f"Error in admin report deletion: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
 ################################# DATABASE ENDPOINTS ########################################
 
 @router.get("/database/stats")

@@ -5,6 +5,7 @@ from datetime import datetime
 from pydantic import field_validator, constr
 
 
+
 # ✅ New Report Status Enum
 class ReportStatus(str, Enum):
     DRAFT = "draft"
@@ -142,6 +143,12 @@ class ReportCreate(ReportBase):
     competencies: List[CompetencyCreate]
     status: ReportStatus = ReportStatus.DRAFT  # ✅ Add status with default
 
+class ReportSubmit(BaseModel):
+    """Schema for final report submission (always sets status=submitted)"""
+    title: str
+    content: Optional[str] = None
+    competencies: List[CompetencyCreate]
+
 
 # ✅ FIXED: Only ONE ReportResponse class
 class ReportResponse(ReportBase):
@@ -184,6 +191,9 @@ class ReportUpdate(BaseModel):
     competencies: Optional[List[CompetencyCreate]] = None
     status: Optional[ReportStatus] = None  # ✅ Status can be updated
 
+
+class ReviewerAssignment(BaseModel):
+    reviewer_id: Optional[int] = None
 
 # ✅ New schema for review actions
 class ReportReview(BaseModel):
@@ -298,3 +308,16 @@ class DetailResponse(BaseModel):
 
 class VerifyEmail(BaseModel):
     token: str
+
+
+class PaginatedUsersResponse(BaseModel):
+    users: List[UserResponse]
+    total_count: int
+    page: int
+    page_size: int
+
+class PaginatedReportsResponse(BaseModel):
+    reports: List[ReportResponse]
+    total_count: int
+    page: int
+    page_size: int

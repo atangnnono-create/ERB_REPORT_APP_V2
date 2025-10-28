@@ -12,7 +12,11 @@ def author_feedback_dashboard(api: EnhancedAPIClient):
 
     # Get user's reports with review feedback
     with LoadingState("Loading your reports with feedback..."):
-        success, reports = api.fetch_reports()
+        success, response = api.get_my_reports_paginated(limit=1000)
+        if success and isinstance(response, dict) and 'reports' in response:
+            reports = response.get('reports', [])
+        else:
+            reports = []
 
         if not success:
             ErrorHandler.show_error("Failed to load your reports")

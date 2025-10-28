@@ -54,8 +54,11 @@ def enhanced_reports_ui(api: EnhancedAPIClient):
             show_bulk_operations(api, can_manage)
 
     feedback_tab = tab3 if can_view_all and not can_manage else tab2
-    with feedback_tab:
-        author_feedback_dashboard(api)
+    if feedback_tab is not None:
+        with feedback_tab:
+            author_feedback_dashboard(api)
+    else:
+        st.warning("Feedback features are currently unavailable")
 
 
 
@@ -83,13 +86,26 @@ def show_my_reports(api: EnhancedAPIClient):
             key="my_reports_date"
         )
 
-    # Fetch reports
+    # Fetch reports - FIXED: Handle potential paginated response
     with LoadingState("Loading your reports..."):
-        success, reports = api.fetch_reports()
+        success, response = api.get_my_reports_paginated(limit=1000)
 
         if not success:
             ErrorHandler.show_error("Failed to load reports")
             return
+
+        # Handle both list and paginated response formats
+        if isinstance(response, dict) and 'reports' in response:
+            # Paginated response format
+            reports = response.get('reports', [])
+            total_count = response.get('total_count', 0)
+            st.info(f"📊 Loaded {len(reports)} of your {total_count} reports")
+        elif isinstance(response, list):
+            # Traditional list response
+            reports = response
+        else:
+            st.error(f"Unexpected response format: {type(response)}")
+            reports = []
 
         # Apply filters
         filtered_reports = apply_report_filters(reports, search_term, status_filter, date_filter)
@@ -100,7 +116,6 @@ def show_my_reports(api: EnhancedAPIClient):
 
     # Display reports in an enhanced table with unique context
     display_reports_table(filtered_reports, api, show_actions=True, context="my_reports")
-
 
 def show_all_reports(api: EnhancedAPIClient):
     """Display all reports (admin/reviewer view)"""
@@ -129,12 +144,31 @@ def show_all_reports(api: EnhancedAPIClient):
             key="all_reports_date"
         )
 
-    # Fetch all reports
+    # Fetch all reports - FIXED: Use correct API method
     with LoadingState("Loading all reports..."):
-        success, reports = api.get_all_reports()
+        # Use the paginated method for admin view
+        success, response = api.get_all_reports_paginated(skip=0, limit=1000)
 
         if not success:
-            ErrorHandler.show_error("Failed to load reports")
+            error_msg = response.get('detail', 'Unknown error') if isinstance(response, dict) else str(response)
+            ErrorHandler.show_error(f"Failed to load reports: {error_msg}")
+            return
+
+        # Handle the new paginated response format
+        if isinstance(response, dict) and 'reports' in response:
+            reports = response.get('reports', [])
+            total_count = response.get('total_count', 0)
+            st.info(f"📊 Loaded {len(reports)} of {total_count} total reports")
+        elif isinstance(response, list):
+            # Fallback for old format
+            reports = response
+            st.info(f"📊 Loaded {len(reports)} reports")
+        else:
+            st.error(f"Unexpected response format: {type(response)}")
+            reports = []
+
+        if not reports:
+            st.info("No reports found in the system.")
             return
 
         # Apply filters
@@ -155,14 +189,32 @@ def show_bulk_operations(api: EnhancedAPIClient, can_manage: bool):
     """Bulk operations interface"""
     st.subheader("⚡ Bulk Operations")
 
-    # Fetch reports for selection
+    # Fetch reports for selection - FIXED: Use consistent API methods
     with LoadingState("Loading reports..."):
         if can_manage:
-            success, reports = api.get_all_reports()
+            # Admin: use paginated method for all reports
+            success, response = api.get_all_reports_paginated(skip=0, limit=1000)
         else:
-            success, reports = api.fetch_reports()
+            # Regular user: use their own reports
+            success, response = api.get_my_reports_paginated(limit=1000)
 
-        if not success or not reports:
+        if not success:
+            error_msg = response.get('detail', 'Unknown error') if isinstance(response, dict) else str(response)
+            ErrorHandler.show_error(f"Failed to load reports: {error_msg}")
+            return
+
+        # Handle response format consistently
+        if isinstance(response, dict) and 'reports' in response:
+            # Paginated response format
+            reports = response.get('reports', [])
+        elif isinstance(response, list):
+            # Traditional list response
+            reports = response
+        else:
+            st.error(f"Unexpected response format: {type(response)}")
+            reports = []
+
+        if not reports:
             st.info("No reports available for bulk operations.")
             return
 
@@ -176,6 +228,7 @@ def show_bulk_operations(api: EnhancedAPIClient, can_manage: bool):
         'words': len(r.get('content', '').split())
     } for r in reports])
 
+    # Rest of the function remains the same...
     # Bulk selection interface
     st.write("### Select Reports for Bulk Actions")
 
@@ -284,7 +337,6 @@ def show_bulk_operations(api: EnhancedAPIClient, can_manage: bool):
         with col2:
             if st.button("📥 Export Selected", use_container_width=True):
                 bulk_export_reports(selected_reports.to_dict('records'))
-
 
 def apply_report_filters(reports: List[Dict], search_term: str, status_filter: str,
                          date_filter: str, user_filter: str = None) -> List[Dict]:
@@ -465,7 +517,11 @@ def show_report_actions(report_id: int, reports: List[Dict], api: EnhancedAPICli
         if can_delete:
             if st.button("🗑️ Delete", key=f"{context}_delete_{report_id}", use_container_width=True, type="secondary"):
                 with st.spinner("🔄 Deleting report..."):
-                    success, result = api.delete_report(report_id)
+                    # Use admin endpoint for admins, regular endpoint for owners
+                    if st.session_state.get('user_role') in ['admin']:
+                        success, result = api.delete_report_as_admin(report_id)  # NEW METHOD
+                    else:
+                        success, result = api.delete_report(report_id)  # EXISTING METHOD
 
                     if success:
                         st.balloons()
@@ -577,10 +633,17 @@ def show_report_details(report: Dict, context: str = ""):
                 st.write("**Review Notes:**")
                 st.info(report['review_notes'])
 
-        # Full content
+        # Full content - FIXED: Add proper label
         st.write("**Full Content:**")
         content = report.get('content', 'No content available')
-        st.text_area("", value=content, height=200, disabled=True, key=f"{context}_full_content_{report['id']}")
+        st.text_area(
+            "Report Content",
+            value=content,
+            height=200,
+            disabled=True,
+            key=f"{context}_full_content_{report['id']}",
+            label_visibility="collapsed"  # Hide the label since we have the header above
+        )
 
         # Competencies section
         if report.get('competencies'):
@@ -588,6 +651,7 @@ def show_report_details(report: Dict, context: str = ""):
             for comp in report['competencies']:
                 with st.expander(f"🔧 {comp.get('competency_title', 'Competency')}"):
                     st.write(f"**Response:** {comp.get('user_response', 'No response')}")
+
 
 def show_reports_statistics(reports: List[Dict]):
     """Display reports statistics"""
@@ -673,7 +737,8 @@ def bulk_delete_reports(api: EnhancedAPIClient, report_ids: List[int]):
     failed_reports = []
 
     for report_id in report_ids:
-        success, result = api.delete_report(report_id)
+        # Use admin endpoint for bulk deletions
+        success, result = api.delete_report_as_admin(report_id)  # NEW METHOD
         if success:
             st.balloons()
             success_count += 1

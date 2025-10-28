@@ -19,18 +19,71 @@ class EnhancedAdminDashboard:
         self.api = api_client
         self.stats_cache = {}
 
+        # Initialize pagination state
+        if 'pagination' not in st.session_state:
+            st.session_state.pagination = {
+                'users_page': 0,
+                'reports_page': 0,
+                'page_size': 50
+            }
+
+        # Initialize filter state
+        if 'filters' not in st.session_state:
+            st.session_state.filters = {
+                'users': {
+                    'search_term': '',
+                    'role_filter': 'All',
+                    'status_filter': 'All',
+                    'verification_filter': 'All'
+                },
+                'reports': {
+                    'date_range': 'All time',
+                    'profession_filter': 'All'
+                }
+            }
+
     def show_dashboard(self):
-        """Main admin dashboard"""
+        """Main admin dashboard with progressive loading"""
         st.title("👑 Enhanced Admin Dashboard")
+
+        # Show authentication debug info
+
+        # Test API connectivity first
+        with st.spinner("Checking API connectivity..."):
+            success, _ = self.api.health_check()
+            if not success:
+                st.error("❌ Cannot connect to API. Please check if the server is running.")
+                return
+            else:
+                st.balloons()
+
+        # Test admin endpoint access
+        with st.spinner("Testing admin permissions..."):
+            success, test_response = self.api.get_all_users_paginated(limit=1)
+            if not success:
+                st.error(f"❌ Admin access denied: {test_response.get('detail', 'Unknown error')}")
+                return
+
 
         # Permission check
         if not self._check_admin_permissions():
             return
 
+        # Rest of your existing dashboard code...
+        # Initialize tab loading states
+        if 'tabs_loaded' not in st.session_state:
+            st.session_state.tabs_loaded = {
+                'overview': False,
+                'user_management': False,
+                'reports_analytics': False,
+                'audit_trail': False,
+                'system_settings': False
+            }
+
         # Quick stats header
         self._show_quick_stats()
 
-        # Main tabs
+        # Main tabs with progressive loading
         tab1, tab2, tab3, tab4, tab5 = st.tabs([
             "📊 Overview",
             "👥 User Management",
@@ -40,19 +93,120 @@ class EnhancedAdminDashboard:
         ])
 
         with tab1:
-            self._show_overview_tab()
-
+            self._load_overview_tab_progressive()
         with tab2:
-            self._show_user_management_tab()
-
+            self._load_user_management_tab_progressive()
         with tab3:
-            self._show_reports_analytics_tab()
-
+            self._load_reports_analytics_tab_progressive()
         with tab4:
-            self._show_audit_trail_tab()
-
+            self._load_audit_trail_tab_progressive()
         with tab5:
-            self._show_system_settings_tab()
+            self._load_system_settings_tab_progressive()
+    def _load_overview_tab_progressive(self):
+        """Load overview tab content progressively"""
+        if not st.session_state.tabs_loaded['overview']:
+            with LoadingState("Loading overview analytics..."):
+                # Load only the data needed for this tab
+                self._load_overview_data()
+                st.session_state.tabs_loaded['overview'] = True
+
+        # Now display the tab content
+        self._show_overview_tab()
+
+    def _load_user_management_tab_progressive(self):
+        """Load user management tab content progressively"""
+        if not st.session_state.tabs_loaded['user_management']:
+            with LoadingState("Loading user management..."):
+                # Load user data only when this tab is accessed
+                self._load_user_management_data()
+                st.session_state.tabs_loaded['user_management'] = True
+
+        self._show_user_management_tab()
+
+    def _load_reports_analytics_tab_progressive(self):
+        """Load reports analytics tab content progressively with pagination"""
+        if not st.session_state.tabs_loaded['reports_analytics']:
+            with LoadingState("Loading reports analytics..."):
+                self._load_reports_analytics_data()
+                st.session_state.tabs_loaded['reports_analytics'] = True
+
+        self._show_reports_analytics_tab()
+
+    def _load_audit_trail_tab_progressive(self):
+        """Load audit trail tab content progressively"""
+        if not st.session_state.tabs_loaded['audit_trail']:
+            # Audit trail starts empty until user loads logs
+            st.session_state.tabs_loaded['audit_trail'] = True
+
+        self._show_audit_trail_tab()
+
+    def _load_system_settings_tab_progressive(self):
+        """Load system settings tab content progressively"""
+        if not st.session_state.tabs_loaded['system_settings']:
+            with LoadingState("Loading system settings..."):
+                self._load_system_settings_data()
+                st.session_state.tabs_loaded['system_settings'] = True
+
+        self._show_system_settings_tab()
+
+    def _load_overview_data(self):
+        """Load data specifically for overview tab"""
+        # Cache the data in session state
+        if 'overview_data' not in st.session_state:
+            st.session_state.overview_data = {
+                'users_data': self._get_users_data(),
+                'reports_data': self._get_reports_data(),
+                'audit_data': self._get_audit_data()
+            }
+
+    def _load_user_management_data(self):
+        """Load paginated user data with total count"""
+        page_size = st.session_state.pagination['page_size']
+        current_page = st.session_state.pagination['users_page']
+        skip = current_page * page_size
+
+        success, response = self.api.get_all_users_paginated(skip=skip, limit=page_size)
+
+        if success and isinstance(response, dict):
+            users = response.get('users', [])
+            total_count = response.get('total_count', 0)
+            st.session_state.user_management_data = users
+            st.session_state.total_users_count = total_count
+        else:
+            st.session_state.user_management_data = []
+            st.session_state.total_users_count = 0
+
+    def _load_reports_analytics_data(self):
+        """Load paginated reports data with total count - DEBUG VERSION"""
+        try:
+            page_size = st.session_state.pagination['page_size']
+            current_page = st.session_state.pagination['reports_page']
+            skip = current_page * page_size
+
+            # Test the API call directly
+            success, response = self.api.get_all_reports_paginated(skip=skip, limit=page_size)
+
+            if success:
+                if isinstance(response, dict) and 'reports' in response:
+                    reports = response.get('reports', [])
+                    total_count = response.get('total_count', 0)
+                    st.session_state.reports_analytics_data = reports
+                    st.session_state.total_reports_count = total_count
+                    st.success(f"✅ Loaded {len(reports)} reports")
+                else:
+                    st.error(f"Unexpected response format: {type(response)}")
+            else:
+                st.error(f"API call failed: {response}")
+
+        except Exception as e:
+            st.error(f"Error loading reports: {str(e)}")
+
+    def _load_system_settings_data(self):
+        """Load data specifically for system settings tab"""
+        # System settings data is loaded on-demand in the tab itself
+        pass
+
+
 
     def _check_admin_permissions(self) -> bool:
         """Check if user has admin permissions"""
@@ -63,9 +217,14 @@ class EnhancedAdminDashboard:
         return True
 
     def _show_quick_stats(self):
-        """Display quick statistics header"""
+        """Display lightweight quick statistics"""
         with LoadingState("Loading system statistics..."):
-            stats = self._get_system_stats()
+            # Use lightweight endpoint instead of loading all data
+            success, stats = self.api.get_quick_stats()
+
+            if not success:
+                # Fallback to existing method if new endpoint not available
+                stats = self._get_system_stats()
 
         col1, col2, col3, col4, col5 = st.columns(5)
 
@@ -86,7 +245,7 @@ class EnhancedAdminDashboard:
         with col3:
             st.metric(
                 "Active Today",
-                stats.get('active_users_today', 0)
+                stats.get('active_users_today')
             )
 
         with col4:
@@ -107,11 +266,11 @@ class EnhancedAdminDashboard:
         """Overview tab with system analytics"""
         st.subheader("📊 System Overview")
 
-        # Fetch comprehensive data
-        with LoadingState("Loading analytics data..."):
-            users_data = self._get_users_data()
-            reports_data = self._get_reports_data()
-            audit_data = self._get_audit_data()
+        # Use cached data from progressive loading
+        data = st.session_state.get('overview_data', {})
+        users_data = data.get('users_data', [])
+        reports_data = data.get('reports_data', [])
+        audit_data = data.get('audit_data', [])
 
         # Row 1: User growth and activity
         col1, col2 = st.columns(2)
@@ -136,83 +295,157 @@ class EnhancedAdminDashboard:
         self._show_system_health()
 
     def _show_user_management_tab(self):
-        """Enhanced user management interface"""
+        """Enhanced user management interface with filter state"""
         st.subheader("👥 User Management")
 
-        # User actions toolbar
+        # User actions toolbar with filter state
         col1, col2, col3, col4 = st.columns([2, 1, 1, 1])
 
         with col1:
-            search_term = st.text_input("🔍 Search users...", placeholder="Search by username, email, or role")
+            search_term = st.text_input(
+                "🔍 Search users...",
+                placeholder="Search by username, email, or role",
+                value=st.session_state.filters['users']['search_term'],
+                key="users_search"
+            )
+            # Update filter state
+            st.session_state.filters['users']['search_term'] = search_term
 
         with col2:
-            role_filter = st.selectbox("Role", ["All", "admin", "reviewer", "engineer", "technologist", "technician",
-                                                "candidate"])
+            role_filter = st.selectbox(
+                "Role",
+                ["All", "admin", "reviewer", "engineer", "technologist", "technician", "candidate"],
+                index=["All", "admin", "reviewer", "engineer", "technologist", "technician", "candidate"].index(
+                    st.session_state.filters['users']['role_filter']
+                ),
+                key="users_role_filter"
+            )
+            st.session_state.filters['users']['role_filter'] = role_filter
 
         with col3:
-            status_filter = st.selectbox("Status", ["All", "active", "inactive"])
+            status_filter = st.selectbox(
+                "Status",
+                ["All", "active", "inactive"],
+                index=["All", "active", "inactive"].index(
+                    st.session_state.filters['users']['status_filter']
+                ),
+                key="users_status_filter"
+            )
+            st.session_state.filters['users']['status_filter'] = status_filter
 
         with col4:
-            verification_filter = st.selectbox("Verified", ["All", "verified", "unverified"])
+            verification_filter = st.selectbox(
+                "Verified",
+                ["All", "verified", "unverified"],
+                index=["All", "verified", "unverified"].index(
+                    st.session_state.filters['users']['verification_filter']
+                ),
+                key="users_verification_filter"
+            )
+            st.session_state.filters['users']['verification_filter'] = verification_filter
 
-        # Load users
-        with LoadingState("Loading users..."):
-            success, users = self.api.get_all_users()
+        # Load users (uses cached data from progressive loading)
+        users = st.session_state.get('user_management_data', [])
+        total_count = st.session_state.get('total_users_count', 0)
 
-            if not success:
-                ErrorHandler.show_error("Failed to load users")
-                return
+        if not users:
+            ErrorHandler.show_error("Failed to load users")
+            return
 
-        # Apply filters
-        filtered_users = self._filter_users(users, search_term, role_filter, status_filter, verification_filter)
+        # Apply filters to current page data
+        filtered_users = self._filter_users(
+            users,
+            st.session_state.filters['users']['search_term'],
+            st.session_state.filters['users']['role_filter'],
+            st.session_state.filters['users']['status_filter'],
+            st.session_state.filters['users']['verification_filter']
+        )
 
         # User statistics
-        st.write(f"**Showing {len(filtered_users)} of {len(users)} users**")
+        st.write(f"**Showing {len(filtered_users)} of {len(users)} users on this page ({total_count} total)**")
 
         # Users table with enhanced features
         self._show_users_table(filtered_users)
 
+    def _should_refresh_tab_data(self, tab_name, max_age_minutes=5):
+        """Check if tab data should be refreshed"""
+        last_loaded = st.session_state.get(f"{tab_name}_last_loaded")
+        if not last_loaded:
+            return True
 
+        return (datetime.now() - last_loaded).seconds > (max_age_minutes * 60)
+
+    def _add_tab_refresh_button(self, tab_name):
+        """Add refresh button to reload tab data with pagination reset"""
+        if st.button("🔄 Refresh", key=f"refresh_{tab_name}"):
+            # Clear the loaded state and data
+            st.session_state.tabs_loaded[tab_name] = False
+            if f"{tab_name}_data" in st.session_state:
+                del st.session_state[f"{tab_name}_data"]
+            # Reset pagination for this tab
+            if tab_name == 'user_management':
+                st.session_state.pagination['users_page'] = 0
+            elif tab_name == 'reports_analytics':
+                st.session_state.pagination['reports_page'] = 0
+            st.rerun()
 
     def _show_reports_analytics_tab(self):
-        """Comprehensive reports analytics"""
+        """Comprehensive reports analytics with filter state"""
         st.subheader("📋 Reports Analytics")
 
-        # Date range filter
+        # Date range filter with state
         col1, col2, col3 = st.columns([1, 1, 2])
 
         with col1:
             date_range = st.selectbox(
                 "Time Period",
                 ["Last 7 days", "Last 30 days", "Last 90 days", "All time"],
+                index=["Last 7 days", "Last 30 days", "Last 90 days", "All time"].index(
+                    st.session_state.filters['reports']['date_range']
+                ),
                 key="reports_date_range"
             )
+            st.session_state.filters['reports']['date_range'] = date_range
 
         with col2:
             profession_filter = st.selectbox(
                 "Profession",
                 ["All", "Engineer", "Engineering Technologist", "Engineering Technician"],
+                index=["All", "Engineer", "Engineering Technologist", "Engineering Technician"].index(
+                    st.session_state.filters['reports']['profession_filter']
+                ),
                 key="reports_profession"
             )
+            st.session_state.filters['reports']['profession_filter'] = profession_filter
 
         with col3:
-            st.write("")  # Spacer
+            # Clear filters button
+            if st.button("🧹 Clear Filters", key="clear_reports_filters"):
+                st.session_state.filters['reports'] = {
+                    'date_range': 'All time',
+                    'profession_filter': 'All'
+                }
+                st.session_state.pagination['reports_page'] = 0
+                st.rerun()
 
-        # Load reports data
-        with LoadingState("Loading reports analytics..."):
-            success, reports = self.api.get_all_reports()
+        # Use cached paginated reports data
+        reports = st.session_state.get('reports_analytics_data', [])
+        total_reports_count = st.session_state.get('total_reports_count', 0)
 
-            if not success:
-                ErrorHandler.show_error("Failed to load reports")
-                return
+        # Apply filters to the current page of data
+        filtered_reports = self._filter_reports(
+            reports,
+            st.session_state.filters['reports']['date_range'],
+            st.session_state.filters['reports']['profession_filter']
+        )
 
-        # Apply filters
-        filtered_reports = self._filter_reports(reports, date_range, profession_filter)
+        # Show pagination info
+        st.write(f"**Page Results:** {len(filtered_reports)} reports (of {total_reports_count} total)")
 
-        # Analytics overview
+        # Analytics overview (for current page)
         self._show_reports_analytics_overview(filtered_reports)
 
-        # Detailed charts
+        # Detailed charts (for current page)
         col1, col2 = st.columns(2)
 
         with col1:
@@ -221,9 +454,13 @@ class EnhancedAdminDashboard:
         with col2:
             self._plot_report_quality_metrics(filtered_reports)
 
-        # Report review queue
+        # Report review queue (for current page)
         st.subheader("📝 Review Queue")
         self._show_review_queue(filtered_reports)
+
+        # Add pagination controls at the bottom
+        self._show_pagination_controls('reports', total_reports_count)
+
 
     def _show_audit_trail_tab(self):
         """Enhanced audit trail with advanced filtering"""
@@ -268,6 +505,8 @@ class EnhancedAdminDashboard:
 
                 if success:
                     st.session_state.audit_logs = logs
+                    if not logs:  # Added: Show message when no logs found
+                        st.info("No audit logs found matching your filters")
                 else:
                     ErrorHandler.show_error("Failed to load audit logs")
 
@@ -427,11 +666,8 @@ class EnhancedAdminDashboard:
             else:
                 st.error("❌ System metrics unavailable")
 
-
-
-
     def _get_system_stats(self) -> Dict[str, Any]:
-        """Get comprehensive system statistics"""
+        """Get comprehensive system statistics - UPDATED TO PAGINATED"""
         # Try to use cached stats if recent
         cache_key = "system_stats"
         if cache_key in self.stats_cache:
@@ -441,17 +677,33 @@ class EnhancedAdminDashboard:
 
         stats = {}
 
-        # Get users data
-        success, users = self.api.get_all_users()
+        # Get users data using paginated endpoint
+        success, users_response = self.api.get_all_users_paginated(limit=1000)
         if success:
-            stats['total_users'] = len(users)
+            if isinstance(users_response, dict) and 'users' in users_response:
+                users = users_response.get('users', [])
+                total_count = users_response.get('total_count', 0)
+            else:
+                # Fallback if response format is unexpected
+                users = []
+                total_count = 0
+
+            stats['total_users'] = total_count
             stats['active_users_today'] = len([u for u in users if u.get('is_active', True)])
             stats['new_users_7d'] = len([u for u in users if self._is_recent(u.get('created_at'), 7)])
 
-        # Get reports data
-        success, reports = self.api.get_all_reports()
+        # Get reports data using paginated endpoint
+        success, reports_response = self.api.get_all_reports_paginated(limit=1000)
         if success:
-            stats['total_reports'] = len(reports)
+            if isinstance(reports_response, dict) and 'reports' in reports_response:
+                reports = reports_response.get('reports', [])
+                total_count = reports_response.get('total_count', 0)
+            else:
+                # Fallback if response format is unexpected
+                reports = []
+                total_count = 0
+
+            stats['total_reports'] = total_count
             stats['new_reports_7d'] = len([r for r in reports if self._is_recent(r.get('created_at'), 7)])
 
             # Calculate approval rate
@@ -467,15 +719,26 @@ class EnhancedAdminDashboard:
 
         return stats
 
+
     def _get_users_data(self) -> List[Dict]:
-        """Get enhanced users data"""
-        success, users = self.api.get_all_users()
-        return users if success else []
+        """Get enhanced users data - UPDATED TO PAGINATED"""
+        # Use paginated endpoint for overview (get first 200 for charts)
+        success, response = self.api.get_all_users_paginated(skip=0, limit=200)
+
+        if success and isinstance(response, dict) and 'users' in response:
+            return response.get('users', [])
+        else:
+            return []
 
     def _get_reports_data(self) -> List[Dict]:
-        """Get enhanced reports data"""
-        success, reports = self.api.get_all_reports()
-        return reports if success else []
+        """Get enhanced reports data - UPDATED TO PAGINATED"""
+        # Use paginated endpoint for overview (get first 200 for charts)
+        success, response = self.api.get_all_reports_paginated(skip=0, limit=200)
+
+        if success and isinstance(response, dict) and 'reports' in response:
+            return response.get('reports', [])
+        else:
+            return []
 
     def _get_audit_data(self) -> List[Dict]:
         """Get audit data for analytics"""
@@ -627,7 +890,7 @@ class EnhancedAdminDashboard:
         st.plotly_chart(fig, use_container_width=True)
 
     def _show_system_health(self):
-        """Display system health metrics"""
+        """Display system health metrics - UPDATED TO PAGINATED"""
         col1, col2, col3, col4 = st.columns(4)
 
         with col1:
@@ -646,14 +909,19 @@ class EnhancedAdminDashboard:
             st.metric("Response Time", f"{response_time:.2f}s")
 
         with col2:
-            # Database health (simplified)
-            success, users = self.api.get_all_users()
-            if success and len(users) > 0:
+            # Database health (updated to use paginated endpoint)
+            success, users_response = self.api.get_all_users_paginated(limit=1)  # Just check connectivity
+            if success:
                 st.success("✅ Database: Healthy")
+                # Get actual count for metric
+                success, full_response = self.api.get_all_users_paginated(limit=1000)
+                user_count = full_response.get('total_count', 0) if success and isinstance(full_response,
+                                                                                           dict) else "N/A"
             else:
                 st.error("❌ Database: Issues")
+                user_count = "N/A"
 
-            st.metric("User Records", len(users) if success else "N/A")
+            st.metric("User Records", user_count)
 
         with col3:
             # Cache performance (placeholder)
@@ -678,6 +946,7 @@ class EnhancedAdminDashboard:
                 st.error("❌ Load: Critical")
 
             st.metric("System Load", f"{system_load}%")
+
 
     def _filter_users(self, users: List[Dict], search: str, role: str, status: str, verification: str) -> List[Dict]:
         """Filter users based on criteria"""
@@ -777,7 +1046,6 @@ class EnhancedAdminDashboard:
         with st.spinner(f"Deleting {len(user_ids)} users..."):
             for user_id in user_ids:
                 try:
-                    # Assuming you have a delete_user method in your API
                     success = self.api.delete_user(user_id)
                     if success:
                         st.balloons()
@@ -928,7 +1196,118 @@ class EnhancedAdminDashboard:
         # Handle individual user updates (existing functionality)
         if not edited_df.equals(df):
             self._handle_user_updates(df, edited_df, users)
+        self._show_pagination_controls('users', st.session_state.total_users_count)
 
+
+    def _show_pagination_controls(self, data_type: str, total_count: int):
+        """Show pagination controls with loading states"""
+        page_key = f'{data_type}_page'
+        current_page = st.session_state.pagination[page_key]
+        page_size = st.session_state.pagination['page_size']
+
+        # Calculate pagination info
+        total_pages = max(1, (total_count + page_size - 1) // page_size) if total_count > 0 else 1
+        start_item = current_page * page_size + 1
+        end_item = min((current_page + 1) * page_size, total_count)
+
+        # Display name mapping
+        display_names = {
+            'users': 'users',
+            'reports': 'reports'
+        }
+        display_name = display_names.get(data_type, data_type)
+
+        # Pagination info and controls
+        st.markdown("---")
+        col1, col2, col3, col4 = st.columns([2, 1, 1, 1])
+
+        with col1:
+            if total_count > 0:
+                st.write(f"**Showing {start_item}-{end_item} of {total_count} {display_name}**")
+            else:
+                st.write(f"**No {display_name} found**")
+
+        with col2:
+            if st.button("⬅️ Previous",
+                         disabled=current_page == 0,
+                         key=f"prev_{data_type}"):
+                # Show loading state during page transition
+                with LoadingState(f"Loading {display_name} page {current_page}..."):
+                    st.session_state.pagination[page_key] = max(0, current_page - 1)
+                    # Clear and reload data for the new page
+                    if f"{data_type}_analytics_data" in st.session_state:
+                        del st.session_state[f"{data_type}_analytics_data"]
+                    # Reload the data
+                    if data_type == 'users':
+                        self._load_user_management_data()
+                    else:
+                        self._load_reports_analytics_data()
+                st.rerun()
+
+        with col3:
+            if st.button("Next ➡️",
+                         disabled=current_page >= total_pages - 1 or total_count == 0,
+                         key=f"next_{data_type}"):
+                # Show loading state during page transition
+                with LoadingState(f"Loading {display_name} page {current_page + 2}..."):
+                    st.session_state.pagination[page_key] = min(total_pages - 1, current_page + 1)
+                    # Clear and reload data for the new page
+                    if f"{data_type}_analytics_data" in st.session_state:
+                        del st.session_state[f"{data_type}_analytics_data"]
+                    # Reload the data
+                    if data_type == 'users':
+                        self._load_user_management_data()
+                    else:
+                        self._load_reports_analytics_data()
+                st.rerun()
+
+        with col4:
+            new_page_size = st.selectbox(
+                "Page size",
+                [25, 50, 100],
+                index=[25, 50, 100].index(page_size),
+                key=f"page_size_{data_type}",
+                label_visibility="collapsed"
+            )
+            if new_page_size != page_size:
+                with LoadingState(f"Changing page size to {new_page_size}..."):
+                    st.session_state.pagination['page_size'] = new_page_size
+                    st.session_state.pagination[page_key] = 0  # Reset to first page
+                    # Clear cached data
+                    if f"{data_type}_analytics_data" in st.session_state:
+                        del st.session_state[f"{data_type}_analytics_data"]
+                    # Reload data with new page size
+                    if data_type == 'users':
+                        self._load_user_management_data()
+                    else:
+                        self._load_reports_analytics_data()
+                st.rerun()
+
+        # Page number indicator
+        if total_pages > 1:
+            st.write(f"**Page {current_page + 1} of {total_pages}**")
+
+    def _clear_all_filters(self, data_type: str):
+        """Clear all filters for users or reports"""
+        if data_type == 'users':
+            st.session_state.filters['users'] = {
+                'search_term': '',
+                'role_filter': 'All',
+                'status_filter': 'All',
+                'verification_filter': 'All'
+            }
+        elif data_type == 'reports':
+            st.session_state.filters['reports'] = {
+                'date_range': 'All time',
+                'profession_filter': 'All'
+            }
+
+        # Reset to first page
+        st.session_state.pagination[f'{data_type}_page'] = 0
+
+        # Clear cached data to force reload
+        if f"{data_type}_analytics_data" in st.session_state:
+            del st.session_state[f"{data_type}_analytics_data"]
 
 
     def _handle_user_updates(self, original_df: pd.DataFrame, edited_df: pd.DataFrame, users: List[Dict]):
@@ -1038,10 +1417,10 @@ class EnhancedAdminDashboard:
         st.rerun()
 
     def _filter_reports(self, reports: List[Dict], date_range: str, profession: str) -> List[Dict]:
-        """Filter reports based on criteria"""
+        """Filter current page of reports based on criteria"""
         filtered = reports
 
-        # Date range filter
+        # Date range filter (applies to current page only)
         if date_range != "All time":
             days = 7 if date_range == "Last 7 days" else 30 if date_range == "Last 30 days" else 90
             cutoff_date = datetime.now() - timedelta(days=days)
@@ -1049,7 +1428,7 @@ class EnhancedAdminDashboard:
             filtered = [r for r in filtered if
                         datetime.fromisoformat(r.get('created_at', '2000-01-01').replace('Z', '')) >= cutoff_date]
 
-        # Profession filter
+        # Profession filter (applies to current page only)
         if profession != "All":
             filtered = [r for r in filtered if profession.lower() in r.get('title', '').lower()]
 
@@ -1264,11 +1643,10 @@ class EnhancedAdminDashboard:
             error_msg = result.get('detail', 'Unknown error occurred')
             ErrorHandler.show_error(f"Failed to submit review: {error_msg}")
 
-
     def _show_audit_logs_table(self, logs: List[Dict]):
-        """Display enhanced audit logs table"""
+        """Display enhanced audit logs table with empty state handling"""
         if not logs:
-            st.info("No audit logs found")
+            st.info("No audit logs found matching your filters")
             return
 
         log_data = []
@@ -1289,13 +1667,19 @@ class EnhancedAdminDashboard:
         df = pd.DataFrame(log_data)
         st.dataframe(df, use_container_width=True, hide_index=True)
 
+
     def _show_audit_statistics(self):
-        """Display audit statistics"""
+        """Display audit statistics with error handling for empty results"""
         if 'audit_logs' not in st.session_state:
             st.info("Load audit logs to see statistics")
             return
 
         logs = st.session_state.audit_logs
+
+        # Handle empty logs case
+        if not logs:
+            st.info("No audit logs available for the selected filters")
+            return
 
         col1, col2, col3 = st.columns(3)
 
@@ -1308,10 +1692,13 @@ class EnhancedAdminDashboard:
             st.metric("Unique Users", unique_users)
 
         with col3:
-            most_common_action = max(set(log.get('action') for log in logs),
-                                     key=list(log.get('action') for log in logs).count)
-            st.metric("Most Common Action", most_common_action)
-
+            # FIXED: Handle empty action list
+            actions = [log.get('action') for log in logs if log.get('action')]
+            if actions:
+                most_common_action = max(set(actions), key=actions.count)
+                st.metric("Most Common Action", most_common_action)
+            else:
+                st.metric("Most Common Action", "N/A")
 
 ############################# DATABASE STATS METHODS #############################################
 
@@ -1475,7 +1862,7 @@ class EnhancedAdminDashboard:
                 st.warning("⚠️ Some systems require attention")
 
     def _export_system_data(self):
-        """Enhanced system data export with comprehensive error handling"""
+        """Enhanced system data export with comprehensive error handling - UPDATED TO PAGINATED"""
         try:
             with LoadingState("Preparing comprehensive system data export..."):
                 export_data = {
@@ -1496,14 +1883,17 @@ class EnhancedAdminDashboard:
                     }
                 }
 
-                # Helper function to safely get data
-                def safe_get_data(api_method, data_key, description):
+                # Helper function to safely get paginated data
+                def safe_get_paginated_data(api_method, data_key, description):
                     try:
-                        success, response = api_method()
-                        if success and isinstance(response, list):
-                            export_data[data_key] = response
-                            export_data['export_metadata']['successful_exports'].append(description)
-                            return len(response)
+                        success, response = api_method(limit=5000)  # Get larger limit for export
+                        if success and isinstance(response, dict):
+                            data = response.get(data_key, [])
+                            total_count = response.get('total_count', 0)
+                            export_data[data_key] = data
+                            export_data['export_metadata']['successful_exports'].append(
+                                f"{description} ({total_count} records)")
+                            return len(data)
                         else:
                             error_msg = response.get('detail', 'Unknown error') if isinstance(response, dict) else str(
                                 response)
@@ -1519,10 +1909,35 @@ class EnhancedAdminDashboard:
                         })
                         return 0
 
-                # Get all data
-                users_count = safe_get_data(self.api.get_all_users, 'users', 'users')
-                reports_count = safe_get_data(self.api.get_all_reports, 'reports', 'reports')
-                audit_count = safe_get_data(lambda: self.api.get_audit_logs(limit=5000), 'audit_logs', 'audit_logs')
+                # Get all data using paginated endpoints
+                users_count = safe_get_paginated_data(self.api.get_all_users_paginated, 'users', 'users')
+                reports_count = safe_get_paginated_data(self.api.get_all_reports_paginated, 'reports', 'reports')
+
+                # Audit logs still uses the old method (keep as is)
+                def safe_get_audit_data():
+                    try:
+                        success, response = self.api.get_audit_logs(limit=5000)
+                        if success and isinstance(response, list):
+                            export_data['audit_logs'] = response
+                            export_data['export_metadata']['successful_exports'].append(
+                                f"audit_logs ({len(response)} records)")
+                            return len(response)
+                        else:
+                            error_msg = response.get('detail', 'Unknown error') if isinstance(response, dict) else str(
+                                response)
+                            export_data['export_metadata']['failed_exports'].append({
+                                'type': 'audit_logs',
+                                'error': error_msg
+                            })
+                            return 0
+                    except Exception as e:
+                        export_data['export_metadata']['failed_exports'].append({
+                            'type': 'audit_logs',
+                            'error': f"Exception: {str(e)}"
+                        })
+                        return 0
+
+                audit_count = safe_get_audit_data()
 
                 # Update totals
                 total_records = users_count + reports_count + audit_count
@@ -1572,7 +1987,6 @@ class EnhancedAdminDashboard:
 
         except Exception as e:
             ErrorHandler.show_error(f"Export failed: {str(e)}")
-
     def _generate_csv_exports(self, export_data):
         """Generate CSV exports for individual data types"""
         col1, col2, col3 = st.columns(3)
@@ -1678,7 +2092,25 @@ class EnhancedAdminDashboard:
 
 
 def enhanced_admin_dashboard(api: EnhancedAPIClient):
-    """Enhanced admin dashboard main function"""
+    """Enhanced admin dashboard main function with authentication check"""
+    # Double-check authentication before proceeding
+    if not api.token:
+        st.error("❌ Not authenticated. Please login first.")
+        return
+
+    # Test API connectivity and permissions
+    with st.spinner("Checking permissions..."):
+        success, user_response = api.get_current_user()
+        if not success:
+            st.error(f"❌ Authentication failed: {user_response.get('detail', 'Unknown error')}")
+            return
+
+        user_role = user_response.get('role', '')
+        if user_role not in ['admin']:
+            st.error("🔒 Access denied. Administrator privileges required.")
+            return
+
+    # If we get here, user is authenticated and has admin privileges
     dashboard = EnhancedAdminDashboard(api)
     dashboard.show_dashboard()
 
