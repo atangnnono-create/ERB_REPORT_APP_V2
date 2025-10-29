@@ -6,6 +6,9 @@ from typing import List, Dict
 from services.enhanced_api_client import EnhancedAPIClient
 from utilities.error_handling import ErrorHandler, LoadingState, with_loading
 from reviewer_feedback import author_feedback_dashboard
+from enhanced_export import EnhancedExporter, ERBIntegration, show_export_interface
+from io import BytesIO
+
 
 
 def enhanced_reports_ui(api: EnhancedAPIClient):
@@ -196,7 +199,7 @@ def show_bulk_operations(api: EnhancedAPIClient, can_manage: bool):
             success, response = api.get_all_reports_paginated(skip=0, limit=1000)
         else:
             # Regular user: use their own reports
-            success, response = api.get_my_reports_paginated(limit=1000)
+            success, response = api.get_my_reports_paginated(skip=0, limit=1000)
 
         if not success:
             error_msg = response.get('detail', 'Unknown error') if isinstance(response, dict) else str(response)
@@ -217,6 +220,9 @@ def show_bulk_operations(api: EnhancedAPIClient, can_manage: bool):
         if not reports:
             st.info("No reports available for bulk operations.")
             return
+
+    # Store original reports in session state for export
+    st.session_state.bulk_operations_reports = reports
 
     # Convert to DataFrame for easier manipulation
     df = pd.DataFrame([{
@@ -320,7 +326,7 @@ def show_bulk_operations(api: EnhancedAPIClient, can_manage: bool):
         if st.button("🗑️ Delete Reports", use_container_width=True):
             bulk_delete_reports(api, selected_ids)
 
-    # Advanced bulk operations for admins
+    # Enhanced bulk operations for admins
     if can_manage:
         st.write("### Admin Bulk Operations")
 
@@ -335,8 +341,51 @@ def show_bulk_operations(api: EnhancedAPIClient, can_manage: bool):
                 bulk_update_status(api, selected_ids, new_status)
 
         with col2:
-            if st.button("📥 Export Selected", use_container_width=True):
-                bulk_export_reports(selected_reports.to_dict('records'))
+            # Enhanced export options
+            st.write("**Enhanced Export**")
+            export_format = st.selectbox(
+                "Format",
+                ["JSON", "DOCX", "PDF", "ZIP Package"],
+                key="bulk_export_format"
+            )
+            include_validation = st.checkbox("Validate for ERB", value=True, key="bulk_validate")
+
+            if st.button("📦 Generate Export", use_container_width=True):
+                # Use the stored full reports for export
+                if 'bulk_operations_reports' in st.session_state:
+                    # Filter the stored reports by selected IDs
+                    selected_full_reports = [r for r in st.session_state.bulk_operations_reports
+                                             if r['id'] in selected_ids]
+                    if selected_full_reports:
+                        bulk_export_reports(selected_full_reports, export_format)
+                    else:
+                        st.error("No report data available for export")
+                else:
+                    st.error("Report data not available for export")
+
+                # Optional: Show ERB validation
+                if include_validation:
+                    show_bulk_validation(api, selected_ids)
+
+
+def show_bulk_validation(api: EnhancedAPIClient, selected_ids: List[int]):
+    """Show ERB validation for selected reports"""
+    integration = ERBIntegration()
+
+    with LoadingState("Validating reports for ERB submission..."):
+        for report_id in selected_ids:
+            success, report_data = api.get_report(report_id)
+            if success:
+                validation = integration.validate_erb_submission(report_data)
+
+                with st.expander(f"Report {report_id} - {report_data.get('title', '')}"):
+                    if validation['is_valid']:
+                        st.success("✅ ERB Compliant")
+                    else:
+                        st.error("❌ ERB Issues")
+                        for error in validation['errors']:
+                            st.error(f"- {error}")
+
 
 def apply_report_filters(reports: List[Dict], search_term: str, status_filter: str,
                          date_filter: str, user_filter: str = None) -> List[Dict]:
@@ -494,14 +543,22 @@ def show_report_actions(report_id: int, reports: List[Dict], api: EnhancedAPICli
 
             json_str = json.dumps(frontend_format, indent=2, ensure_ascii=False)
 
-            st.download_button(
-                "📥 Download",
-                data=json_str,
-                file_name=f"report_{report['id']}_{datetime.now().strftime('%Y%m%d')}.json",
-                mime="application/json",
-                key=f"{context}_download_{report_id}",  # ✅ UNIQUE KEY
-                use_container_width=True
-            )
+            # Enhanced export with format selection
+            export_formats = ["JSON", "DOCX", "PDF", "CSV"]
+            selected_format = st.selectbox("Format", export_formats, key=f"export_format_{report_id}")
+
+            if st.button("📥 Download", key=f"{context}_download_{report_id}", use_container_width=True):
+                exporter = EnhancedExporter()
+                buffer = exporter.export_report(report, selected_format.lower(), include_metadata=True)
+
+                st.download_button(
+                    "💾 Download File",
+                    data=buffer.getvalue(),
+                    file_name=f"report_{report['id']}_{datetime.now().strftime('%Y%m%d')}.{selected_format.lower()}",
+                    mime=exporter.supported_formats[selected_format.lower()],
+                    key=f"final_download_{report_id}"
+                )
+
         except Exception as e:
             st.error(f"Download error: {str(e)}")
 
@@ -764,42 +821,71 @@ def bulk_delete_reports(api: EnhancedAPIClient, report_ids: List[int]):
 
     st.rerun()
 
-def bulk_export_reports(reports: List[Dict]):
-    """Bulk export selected reports in create_report.py compatible format"""
-    export_data = {
-        "exported_at": datetime.now().isoformat(),
-        "total_reports": len(reports),
-        "reports": []
-    }
 
-    for report in reports:
-        # Transform each report to frontend format
-        role = determine_role_from_report(report)
-        frontend_report = {
-            role: {}
+def bulk_export_reports(reports: List[Dict], format_type: str):
+    """Enhanced bulk export with multiple formats"""
+    exporter = EnhancedExporter()
+
+    if format_type.lower() == 'json':
+        # Combine all reports into one JSON file
+        export_data = {
+            "exported_at": datetime.now().isoformat(),
+            "total_reports": len(reports),
+            "reports": reports
         }
+        buffer = BytesIO()
+        buffer.write(json.dumps(export_data, indent=2, ensure_ascii=False).encode('utf-8'))
+        buffer.seek(0)
 
-        for competency in report.get('competencies', []):
-            key = competency['competency_key']
-            response_text = competency['user_response'] or ""
+        st.download_button(
+            "📥 Download Combined JSON",
+            data=buffer.getvalue(),
+            file_name=f"reports_export_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json",
+            mime="application/json"
+        )
 
-            frontend_report[role][key] = {
-                "title": competency['competency_title'],
-                "response": response_text,
-                "word_count": len(response_text.split()) if response_text else 0
-            }
+    elif format_type.lower() in ['docx', 'pdf']:
+        # Export first report as example (you can enhance this later)
+        if reports:
+            buffer = exporter.export_report(reports[0], format_type.lower(), include_metadata=True)
+            st.download_button(
+                f"📥 Download {format_type.upper()}",
+                data=buffer.getvalue(),
+                file_name=f"report_export_{datetime.now().strftime('%Y%m%d_%H%M')}.{format_type.lower()}",
+                mime=exporter.supported_formats[format_type.lower()]
+            )
 
-        export_data["reports"].append(frontend_report)
+    else:
+        st.info("ZIP package export coming soon!")
 
-    json_str = json.dumps(export_data, indent=2, ensure_ascii=False)
+def bulk_export_single_format(reports: List[Dict], exporter: EnhancedExporter, format_type: str):
+    """Export all reports in a single file"""
+    if format_type == 'json':
+        # Combine all reports into one JSON file
+        export_data = {
+            "exported_at": datetime.now().isoformat(),
+            "total_reports": len(reports),
+            "reports": reports
+        }
+        buffer = BytesIO()
+        buffer.write(json.dumps(export_data, indent=2, ensure_ascii=False).encode('utf-8'))
+        buffer.seek(0)
 
-    st.download_button(
-        "💾 Download Export",
-        data=json_str,
-        file_name=f"reports_export_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json",
-        mime="application/json",
-        key="bulk_export"
-    )
+        st.download_button(
+            "📥 Download Combined JSON",
+            data=buffer.getvalue(),
+            file_name=f"reports_export_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json",
+            mime="application/json"
+        )
+    #else:
+        # For other formats, create a ZIP with individual files
+        #bulk_export_zip_multiple(reports, exporter, format_type)
+
+
+def bulk_export_zip(api: EnhancedAPIClient, selected_ids: List[int], exporter: EnhancedExporter):
+    """Create ZIP with multiple formats"""
+    # Implementation for ZIP export with DOCX, PDF, JSON
+    pass
 #################################################################################################
 
 

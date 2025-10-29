@@ -5,7 +5,7 @@ from io import BytesIO
 from datetime import datetime
 from frontend.utilities.comps import (engineer_competencies, technician_competencies, technologist_competencies)
 import enhanced_ai_service
-from utilities.utils import (export_to_docx, has_responses, sort_keys, render_progress_dashboard)
+from utilities.utils import (export_to_docx, has_responses, sort_keys, render_progress_dashboard_sorted)
 from frontend.services.enhanced_api_client import EnhancedAPIClient
 from utilities.error_handling import ErrorHandler, LoadingState, with_loading
 from services.enhanced_state_manager import state_manager
@@ -240,6 +240,35 @@ def enhanced_submit_report(selected_role: str, competency_sections: dict):
         return
 
     report_status = st.session_state.responses[selected_role].get('_status', 'draft')
+
+    # ========== ADD ROLE-BASED COMPETENCY VALIDATION HERE ==========
+    # Count completed competencies (excluding the _status field)
+    completed_competencies = 0
+    for key, response_data in st.session_state.responses[selected_role].items():
+        if key != '_status' and response_data.get("response", "").strip():
+            completed_competencies += 1
+
+    # Define role-based minimum requirements
+    role_minimums = {
+        "Engineer": 10,
+        "Engineering Technologist": 34,
+        "Engineering Technician": 32
+    }
+
+    # Apply validation rules based on report status and role
+    if report_status == 'submitted':
+        required_minimum = role_minimums.get(selected_role, 0)
+
+        if completed_competencies < required_minimum:
+            ErrorHandler.show_error(
+                f"Cannot submit report for review: {selected_role} role requires at least {required_minimum} "
+                f"completed competencies. You currently have {completed_competencies} completed competencies. "
+                f"Please complete more competencies or save as draft instead."
+            )
+            return
+    # For draft status, no competency count validation is needed
+    # ========== END OF VALIDATION LOGIC ==========
+
     sorted_responses = dict(
         sorted(st.session_state.responses[selected_role].items(), key=lambda x: x[0]))
 
@@ -296,7 +325,6 @@ def enhanced_submit_report(selected_role: str, competency_sections: dict):
                 state_manager.set_state("responses", st.session_state.responses, persist=True)
             else:
                 ErrorHandler.show_error(f"Failed to save draft: {result.get('detail', 'Unknown error')}")
-
 
 
 def initialize_session_state():
@@ -524,7 +552,33 @@ def create_report_ui():
 
     # Progress dashboard
     with st.sidebar:
-        render_progress_dashboard(competency_sections, st.session_state.selected_role)
+        # Status selection
+        st.subheader("📋 Report Status")
+
+        current_status = st.session_state.responses[selected_role].get('_status', 'draft')
+
+        status_options = ["draft", "submitted"]
+        status_descriptions = {
+            "draft": "💾 Save as draft (you can continue editing later)",
+            "submitted": "📤 Submit for review (ready for reviewer assessment)"
+        }
+
+        selected_status = st.radio(
+            "Report Status:",
+            options=status_options,
+            format_func=lambda x: status_descriptions[x],
+            index=status_options.index(current_status) if current_status in status_options else 0
+        )
+
+        st.session_state.responses[selected_role]['_status'] = selected_status
+        state_manager.set_state("responses", st.session_state.responses, persist=True)
+
+        if selected_status == "submitted":
+            st.info("🔔 Your report will be submitted for review and cannot be edited further until reviewed.")
+
+
+
+        render_progress_dashboard_sorted(competency_sections, st.session_state.selected_role)
 
     # Auto-Save Check
     auto_save_check()
@@ -596,30 +650,6 @@ def create_report_ui():
     st.subheader(f"Competency {current_index + 1} of {total_sections}: {section['title']}")
     st.info(section["instructions"])
 
-    # Status selection
-    with st.sidebar:
-        st.subheader("📋 Report Status")
-
-        current_status = st.session_state.responses[selected_role].get('_status', 'draft')
-
-        status_options = ["draft", "submitted"]
-        status_descriptions = {
-            "draft": "💾 Save as draft (you can continue editing later)",
-            "submitted": "📤 Submit for review (ready for reviewer assessment)"
-        }
-
-        selected_status = st.radio(
-            "Report Status:",
-            options=status_options,
-            format_func=lambda x: status_descriptions[x],
-            index=status_options.index(current_status) if current_status in status_options else 0
-        )
-
-        st.session_state.responses[selected_role]['_status'] = selected_status
-        state_manager.set_state("responses", st.session_state.responses, persist=True)
-
-        if selected_status == "submitted":
-            st.info("🔔 Your report will be submitted for review and cannot be edited further until reviewed.")
 
     # Response handler
     user_input = enhanced_response_handler(selected_role, current_key, section)

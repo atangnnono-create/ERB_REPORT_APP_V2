@@ -19,9 +19,6 @@ def login_ui(api: EnhancedAPIClient):
                 # ✅ Get user profile to store role and other info
                 user_success, user_info = api.get_current_user()
 
-                # DEBUG: Show what we're getting from the backend
-                st.info(f"DEBUG: User info received: {user_info}")
-
                 if user_success and user_info:
                     # Store ALL user information properly
                     st.session_state.user_role = user_info.get("role", "candidate")
