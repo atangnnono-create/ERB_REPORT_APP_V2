@@ -102,6 +102,21 @@ class EnhancedAdminDashboard:
             self._load_audit_trail_tab_progressive()
         with tab5:
             self._load_system_settings_tab_progressive()
+
+        st.markdown("""
+                 <div style='text-align: center; margin-top: 3rem; padding: 2rem; background: #f8f9fa; border-radius: 10px;'>
+                     <p style='color: #666; margin: 0;'>
+                         <strong>Engineering Report Deck</strong> • Confidence with Clarity
+                     </p>
+                     <p style='color: #888; font-size: 0.9rem; margin: 0.5rem 0 0 0;'>
+                         TurtleTEC Solutions Africa
+                         © 2025. ALL RIGHTS RESERVED.
+                     </p>
+                 </div>
+                 """, unsafe_allow_html=True)
+
+
+
     def _load_overview_tab_progressive(self):
         """Load overview tab content progressively"""
         if not st.session_state.tabs_loaded['overview']:
@@ -1828,7 +1843,7 @@ class EnhancedAdminDashboard:
             })
 
             # Check database
-            db_success, _ = self.api.get_all_users()
+            db_success, _ = self.api.get_all_users_paginated()
             checks.append({
                 'component': 'Database',
                 'status': '✅ Healthy' if db_success else '❌ Issues',

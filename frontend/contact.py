@@ -410,17 +410,17 @@ def show():
             </div>
             """, unsafe_allow_html=True)
 
-    # Footer
     st.markdown("""
-    <div style='text-align: center; margin-top: 3rem; padding: 2rem; background: #f8f9fa; border-radius: 10px;'>
-        <p style='color: #666; margin: 0;'>
-            <strong>Engineering Report Deck Support</strong> • Committed to Excellence in Engineering Documentation
-        </p>
-        <p style='color: #888; font-size: 0.9rem; margin: 0.5rem 0 0 0;'>
-            Your trusted partner for professional engineering reporting solutions
-        </p>
-    </div>
-    """, unsafe_allow_html=True)
+             <div style='text-align: center; margin-top: 3rem; padding: 2rem; background: #f8f9fa; border-radius: 10px;'>
+                 <p style='color: #666; margin: 0;'>
+                     <strong>Engineering Report Deck</strong> • Confidence with Clarity
+                 </p>
+                 <p style='color: #888; font-size: 0.9rem; margin: 0.5rem 0 0 0;'>
+                     TurtleTEC Solutions Africa
+                     © 2025. ALL RIGHTS RESERVED.
+                 </p>
+             </div>
+             """, unsafe_allow_html=True)
 
 
 if __name__ == "__main__":

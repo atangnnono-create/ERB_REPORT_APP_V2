@@ -10,8 +10,86 @@ from frontend.services.enhanced_api_client import EnhancedAPIClient
 from utilities.error_handling import ErrorHandler, LoadingState, with_loading
 from services.enhanced_state_manager import state_manager
 
-
 api = EnhancedAPIClient()
+
+
+def set_report_styles():
+    """Clean CSS without container issues"""
+    st.markdown("""
+    <style>
+    /* Clean main styling */
+    .main-report-container {
+        background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+        min-height: 100vh;
+    }
+
+    /* Enhanced progress bar styling - target main area specifically */
+    .main .stProgress > div > div > div {
+        background: linear-gradient(135deg, #27ae60 0%, #2ecc71 100%) !important;
+        border-radius: 4px !important;
+    }
+
+    /* Make sure the progress bar container is visible in main area */
+    .main .stProgress {
+        background-color: #e9ecef !important;
+        border-radius: 4px !important;
+        height: 8px !important;
+    }
+
+    /* Scrollable AI feedback boxes */
+    .scrollable-feedback {
+        max-height: 300px;
+        overflow-y: auto;
+        border: 1px solid #e0e0e0;
+        border-radius: 8px;
+        padding: 1rem;
+        background: #f8f9fa;
+        margin: 0.5rem 0;
+    }
+
+    /* Enhanced text area */
+    .stTextArea textarea {
+        border: 2px solid #e9ecef;
+        border-radius: 8px;
+        padding: 1rem;
+        font-size: 1rem;
+        transition: all 0.3s ease;
+        background: #ffffff;
+    }
+
+    .stTextArea textarea:focus {
+        border-color: #3498db;
+        box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
+    }
+
+    /* Professional buttons */
+    .stButton button {
+        background: linear-gradient(135deg, #3498db 0%, #2980b9 100%);
+        color: white;
+        border: none;
+        border-radius: 8px;
+        padding: 0.75rem 1.5rem;
+        font-weight: 600;
+        transition: all 0.3s ease;
+    }
+
+    .stButton button:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(52, 152, 219, 0.3);
+    }
+
+    /* Hide Streamlit default elements */
+    #MainMenu {visibility: hidden;}
+    footer {visibility: hidden;}
+    header {visibility: hidden;}
+    .stDeployButton {display: none;}
+
+    /* Better spacing */
+    .main-content {
+        padding: 1rem;
+    }
+    </style>
+    """, unsafe_allow_html=True)
 
 # ========== ENHANCED STATE MANAGER INTEGRATION ==========
 def setup_auto_save():
@@ -462,7 +540,10 @@ def clear_full_report_suggestions():
 
 
 def create_report_ui():
-    st.set_page_config(page_title="📝 Create Report", layout="centered")
+    st.set_page_config(page_title="📝 Create Report", layout="wide")
+
+    # Apply clean styles
+    set_report_styles()
 
     # Require Login
     if "token" not in st.session_state or not st.session_state.token:
@@ -477,35 +558,17 @@ def create_report_ui():
     # Setup auto-save
     setup_auto_save()
 
-    # Auto-save controls
-    show_auto_save_controls()
-
-    # Check for auto-saved progress
-    if "auto_save_loaded" not in st.session_state:
-        saved_data = load_auto_saved_progress()
-        if saved_data and st.session_state.get("selected_role") == saved_data.get("role"):
-            with st.container():
-                st.warning("💾 Auto-saved progress found from your last session")
-                col1, col2 = st.columns(2)
-                with col1:
-                    if st.button("🔄 Restore Progress"):
-                        st.session_state.responses[saved_data["role"]] = saved_data.get("responses", {})
-                        st.session_state.current_section = saved_data.get("current_section", 0)
-                        st.session_state.auto_save_loaded = True
-                        state_manager.set_state("responses", st.session_state.responses, persist=True)
-                        state_manager.set_state("current_section", st.session_state.current_section, persist=True)
-                        st.rerun()
-                with col2:
-                    if st.button("🗑️ Start Fresh"):
-                        st.session_state.auto_save_loaded = True
-                        st.rerun()
-
-    # File uploader
+    # Main layout with sidebar
     with st.sidebar:
+        # Auto-save controls
+        show_auto_save_controls()
+
+        # File uploader
         uploaded_file = st.file_uploader(
-            "⬇️ Load Report 📂",
+            "📂 Load Previous Report",
             type=["json"],
-            key="file_loader_report"
+            key="file_loader_report",
+            help="Upload a previously saved JSON report to continue working"
         )
 
         if uploaded_file is not None and st.session_state.get("last_loaded_file") != uploaded_file.name:
@@ -529,219 +592,280 @@ def create_report_ui():
                 st.session_state.pending_responses = loaded_responses
                 st.session_state.last_loaded_file = uploaded_file.name
 
-                st.success(f"Progress preloaded for {st.session_state.selected_role} from {uploaded_file.name}")
+                st.success(f"✅ Progress loaded for {st.session_state.selected_role}")
                 st.rerun()
 
             except Exception as e:
                 st.error(f"Error loading progress: {str(e)}")
 
-    # Role selection
-    selected_role = enhanced_role_selection()
+    # Main content area
+    col1, col2 = st.columns([3, 1])
 
-    if selected_role == "Engineer":
-        competency_sections = engineer_competencies
-    elif selected_role == "Engineering Technologist":
-        competency_sections = technologist_competencies
-    else:
-        competency_sections = technician_competencies
+    with col1:
+        # Horizontal Status Section
+        st.markdown("#### 👷 Professional Role")
+        selected_role = enhanced_role_selection()
 
-    # FIX: Ensure the selected role has responses initialized
-    if selected_role not in st.session_state.responses or not isinstance(st.session_state.responses[selected_role],
-                                                                         dict):
-        st.session_state.responses[selected_role] = {}
-
-    # Progress dashboard
-    with st.sidebar:
-        # Status selection
-        st.subheader("📋 Report Status")
-
-        current_status = st.session_state.responses[selected_role].get('_status', 'draft')
-
-        status_options = ["draft", "submitted"]
-        status_descriptions = {
-            "draft": "💾 Save as draft (you can continue editing later)",
-            "submitted": "📤 Submit for review (ready for reviewer assessment)"
-        }
-
-        selected_status = st.radio(
-            "Report Status:",
-            options=status_options,
-            format_func=lambda x: status_descriptions[x],
-            index=status_options.index(current_status) if current_status in status_options else 0
-        )
-
-        st.session_state.responses[selected_role]['_status'] = selected_status
-        state_manager.set_state("responses", st.session_state.responses, persist=True)
-
-        if selected_status == "submitted":
-            st.info("🔔 Your report will be submitted for review and cannot be edited further until reviewed.")
-
-
-
-        render_progress_dashboard_sorted(competency_sections, st.session_state.selected_role)
-
-    # Auto-Save Check
-    auto_save_check()
-
-    # File upload normalization
-    if "pending_responses" in st.session_state and st.session_state.pending_responses is not None:
-        raw_data = st.session_state.pending_responses
-
-        if isinstance(raw_data, dict):
-            role = st.session_state.selected_role
-            role_data = raw_data.get(role, {})
-
-            if isinstance(role_data, dict):
-                for k, v in role_data.items():
-                    if isinstance(v, dict) and k in competency_sections:
-                        v.setdefault("title", competency_sections[k]["title"])
-                        v.setdefault("response", "")
-                        v.setdefault(
-                            "word_count",
-                            len(v.get("response", "").split()) if v.get("response") else 0
-                        )
-
-                st.session_state.responses[role] = role_data
-                state_manager.set_state("responses", st.session_state.responses, persist=True)
-
-            del st.session_state.pending_responses
+        if selected_role == "Engineer":
+            competency_sections = engineer_competencies
+        elif selected_role == "Engineering Technologist":
+            competency_sections = technologist_competencies
         else:
-            st.error("Invalid data format in uploaded file")
-            del st.session_state.pending_responses
+            competency_sections = technician_competencies
 
-    # Main UI components
-    role_responses = st.session_state.responses.get(selected_role, {})
+        # Initialize responses for selected role
+        if selected_role not in st.session_state.responses or not isinstance(st.session_state.responses[selected_role],
+                                                                             dict):
+            st.session_state.responses[selected_role] = {}
 
-    # Handle role switching
-    if "last_role" not in st.session_state:
-        st.session_state.last_role = selected_role
-    elif st.session_state.last_role != selected_role:
-        st.session_state.current_section = 0
-        state_manager.set_state("current_section", 0, persist=True)
-        clear_competency_suggestions()
-        clear_full_report_suggestions()
-        st.session_state.last_role = selected_role
-        state_manager.set_state("last_role", selected_role, persist=True)
-        st.rerun()
+        # Status row
+        st.markdown("---")
+        status_col1, status_col2, status_col3 = st.columns(3)
 
-    # Progress tracker - FIX: Added proper null checks
-    section_keys = sort_keys(list(competency_sections.keys()))
-    total_sections = len(section_keys)
+        with status_col1:
+            current_status = st.session_state.responses[selected_role].get('_status', 'draft')
+            status_options = ["draft", "submitted"]
+            selected_status = st.radio(
+                "📋 Report Status",
+                options=status_options,
+                index=status_options.index(current_status) if current_status in status_options else 0,
+                horizontal=True
+            )
+            st.session_state.responses[selected_role]['_status'] = selected_status
+            state_manager.set_state("responses", st.session_state.responses, persist=True)
 
-    # FIX: Safe completion count with proper null checks
-    completed_sections = 0
-    current_role_responses = st.session_state.responses.get(selected_role, {})
-    if isinstance(current_role_responses, dict):
-        completed_sections = sum(
-            1
-            for k in section_keys
-            if isinstance(current_role_responses.get(k), dict)
-            and current_role_responses[k].get("response", "").strip()
-        )
-
-    progress_ratio = completed_sections / total_sections if total_sections else 0
-    st.progress(progress_ratio, text=f"{completed_sections}/{total_sections} completed")
-
-    # Current section
-    current_index = min(max(st.session_state.current_section, 0), total_sections - 1)
-    current_key = section_keys[current_index]
-    section = competency_sections[current_key]
-
-    st.subheader(f"Competency {current_index + 1} of {total_sections}: {section['title']}")
-    st.info(section["instructions"])
-
-
-    # Response handler
-    user_input = enhanced_response_handler(selected_role, current_key, section)
-
-    # Navigation
-    enhanced_navigation(total_sections)
-
-    st.markdown("---")
-
-    # Action buttons
-    col1, col2 = st.columns(2)
-    with col1:
-        if st.button("🚀 Submit Report", key="enhanced_submit"):
-            enhanced_submit_report(selected_role, competency_sections)
-
-    with col2:
-        if st.button("📄 Export Report to Word"):
-            if not has_responses(st.session_state.responses[selected_role]):
-                st.warning("No responses found.")
+        with status_col2:
+            if selected_status == "submitted":
+                st.success("✅ Ready for review")
             else:
-                doc = export_to_docx(st.session_state.responses[selected_role], competency_sections)
-                buffer = BytesIO()
-                doc.save(buffer)
-                buffer.seek(0)
-                st.download_button(
-                    "📥 Download ERB_Report.docx",
-                    data=buffer.getvalue(),
-                    file_name="ERB_Report.docx",
-                    mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                st.info("💾 Draft mode")
+
+        with status_col3:
+            # Quick progress indicator
+            section_keys = sort_keys(list(competency_sections.keys()))
+            total_sections = len(section_keys)
+            current_role_responses = st.session_state.responses.get(selected_role, {})
+            completed_sections = 0
+            if isinstance(current_role_responses, dict):
+                completed_sections = sum(
+                    1 for k in section_keys
+                    if isinstance(current_role_responses.get(k), dict)
+                    and current_role_responses[k].get("response", "").strip()
                 )
+            #st.metric("Progress", f"{completed_sections}/{total_sections}")
 
-    # AI Review
-    col1, col2 = st.columns(2)
-    with col1:
-        if st.button("֎Review Response with AI"):
-            if not user_input.strip():
-                st.session_state.suggestion = ""
-                st.warning("Please enter a response first.")
+        st.markdown("---")
+
+        # Check for auto-saved progress
+        if "auto_save_loaded" not in st.session_state:
+            saved_data = load_auto_saved_progress()
+            if saved_data and st.session_state.get("selected_role") == saved_data.get("role"):
+                st.info("💾 Auto-saved progress found from your last session")
+                col_restore1, col_restore2 = st.columns(2)
+                with col_restore1:
+                    if st.button("🔄 Restore Progress", use_container_width=True):
+                        st.session_state.responses[saved_data["role"]] = saved_data.get("responses", {})
+                        st.session_state.current_section = saved_data.get("current_section", 0)
+                        st.session_state.auto_save_loaded = True
+                        state_manager.set_state("responses", st.session_state.responses, persist=True)
+                        state_manager.set_state("current_section", st.session_state.current_section, persist=True)
+                        st.rerun()
+                with col_restore2:
+                    if st.button("🗑️ Start Fresh", use_container_width=True):
+                        st.session_state.auto_save_loaded = True
+                        st.rerun()
+
+        # Auto-Save Check
+        auto_save_check()
+
+        # File upload normalization
+        if "pending_responses" in st.session_state and st.session_state.pending_responses is not None:
+            raw_data = st.session_state.pending_responses
+
+            if isinstance(raw_data, dict):
+                role = st.session_state.selected_role
+                role_data = raw_data.get(role, {})
+
+                if isinstance(role_data, dict):
+                    for k, v in role_data.items():
+                        if isinstance(v, dict) and k in competency_sections:
+                            v.setdefault("title", competency_sections[k]["title"])
+                            v.setdefault("response", "")
+                            v.setdefault(
+                                "word_count",
+                                len(v.get("response", "").split()) if v.get("response") else 0
+                            )
+
+                    st.session_state.responses[role] = role_data
+                    state_manager.set_state("responses", st.session_state.responses, persist=True)
+
+                del st.session_state.pending_responses
             else:
-                with st.spinner("Generating AI suggestions..."):
-                    suggestion = enhanced_ai_service.get_gpt_feedback(user_input, current_key, section, selected_role)
-                    st.session_state.suggestion = suggestion
+                st.error("Invalid data format in uploaded file")
+                del st.session_state.pending_responses
 
+        # Handle role switching
+        if "last_role" not in st.session_state:
+            st.session_state.last_role = selected_role
+        elif st.session_state.last_role != selected_role:
+            st.session_state.current_section = 0
+            state_manager.set_state("current_section", 0, persist=True)
+            clear_competency_suggestions()
+            clear_full_report_suggestions()
+            st.session_state.last_role = selected_role
+            state_manager.set_state("last_role", selected_role, persist=True)
+            st.rerun()
+
+        # Progress tracker
+        section_keys = sort_keys(list(competency_sections.keys()))
+        total_sections = len(section_keys)
+
+        completed_sections = 0
+        current_role_responses = st.session_state.responses.get(selected_role, {})
+        if isinstance(current_role_responses, dict):
+            completed_sections = sum(
+                1
+                for k in section_keys
+                if isinstance(current_role_responses.get(k), dict)
+                and current_role_responses[k].get("response", "").strip()
+            )
+
+        progress_ratio = completed_sections / total_sections if total_sections else 0
+
+        # Progress display
+        st.markdown("#### 📊 Your Progress")
+        col_prog1, col_prog2 = st.columns([3, 1])
+        with col_prog1:
+            st.progress(progress_ratio)
+        with col_prog2:
+            st.markdown(f"**{completed_sections}/{total_sections}** competencies completed")
+
+        # Current competency section
+        current_index = min(max(st.session_state.current_section, 0), total_sections - 1)
+        current_key = section_keys[current_index]
+        section = competency_sections[current_key]
+
+        # Competency section
+        st.markdown("---")
+        st.markdown(f"#### 🎯 Competency {current_index + 1} of {total_sections}")
+        st.markdown(f"##### {section['title']}")
+        st.info(f"💡 **Instructions:** {section['instructions']}")
+
+        # Response handler
+        user_input = enhanced_response_handler(selected_role, current_key, section)
+
+        # Navigation
+        st.markdown("---")
+        col_nav1, col_nav2, col_nav3 = st.columns([1, 2, 1])
+        with col_nav1:
+            if st.button("⬅️ Previous", use_container_width=True,
+                         key="prev_btn") and st.session_state.current_section > 0:
+                auto_save_check(force_save=True)
+                st.session_state.current_section -= 1
+                state_manager.set_state("current_section", st.session_state.current_section, persist=True)
+                clear_competency_suggestions()
+                st.rerun()
+        with col_nav3:
+            if st.button("Next ➡️", use_container_width=True,
+                         key="next_btn") and st.session_state.current_section < total_sections - 1:
+                auto_save_check(force_save=True)
+                st.session_state.current_section += 1
+                state_manager.set_state("current_section", st.session_state.current_section, persist=True)
+                clear_competency_suggestions()
+                st.rerun()
+
+        # Final actions - MOVED UP before AI section
+        st.markdown("---")
+        st.markdown("##### 🚀 Finalize Your Report")
+
+        action_col1, action_col2 = st.columns(2)
+
+        with action_col1:
+            if st.button("📤 Submit Report for Review", use_container_width=True, key="enhanced_submit", type="primary"):
+                enhanced_submit_report(selected_role, competency_sections)
+
+        with action_col2:
+            if st.button("💾 Export to Word", use_container_width=True):
+                if not has_responses(st.session_state.responses[selected_role]):
+                    st.warning("No responses found to export.")
+                else:
+                    doc = export_to_docx(st.session_state.responses[selected_role], competency_sections)
+                    buffer = BytesIO()
+                    doc.save(buffer)
+                    buffer.seek(0)
+                    st.download_button(
+                        "📥 Download ERB_Report.docx",
+                        data=buffer.getvalue(),
+                        file_name="ERB_Report.docx",
+                        mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                        use_container_width=True
+                    )
+
+        # AI Review Section - MOVED TO BOTTOM
+        st.markdown("---")
+        st.markdown("##### 🤖 AI-Powered Assistance")
+
+        # AI buttons row
+        ai_col1, ai_col2 = st.columns(2)
+
+        with ai_col1:
+            if st.button("🎯 Review Current Response", use_container_width=True, key="ai_current"):
+                if not user_input.strip():
+                    st.session_state.suggestion = ""
+                    st.warning("Please enter a response first.")
+                else:
+                    with st.spinner("Analyzing your response with AI..."):
+                        suggestion = enhanced_ai_service.get_gpt_feedback(user_input, current_key, section,
+                                                                          selected_role)
+                        st.session_state.suggestion = suggestion
+
+        with ai_col2:
+            if st.button("📊 Review Entire Report", use_container_width=True, key="ai_full"):
+                if not has_responses(st.session_state.responses[selected_role]):
+                    st.warning("No responses found.")
+                else:
+                    with st.spinner("Analyzing your full report..."):
+                        full_feedback = enhanced_ai_service.get_full_report_feedback(
+                            st.session_state.responses[selected_role], competency_sections, selected_role)
+                        st.session_state.full_feedback = full_feedback
+
+        # AI Feedback displays - SCROLLABLE BOXES
         if st.session_state.suggestion:
+            st.markdown("#### 🎯 AI Suggestions for Current Response")
             if st.session_state.suggestion.startswith("⚠️"):
                 st.error(st.session_state.suggestion)
             else:
                 st.markdown(
-                    f"""
-                    **֎🇦🇮 AI Suggestions:**
-                    <div style="
-                        max-height: 250px; 
-                        overflow-y: auto; 
-                        padding: 0.5rem; 
-                        border: 1px solid #ddd; 
-                        border-radius: 8px;
-                        background-color: #f9f9f9;">
-                        {st.session_state.suggestion}
-                    </div>
-                    """,
+                    f'<div class="scrollable-feedback">{st.session_state.suggestion}</div>',
                     unsafe_allow_html=True
                 )
 
-    with col2:
-        if st.button("🔍 Review Entire Report with AI"):
-            if not has_responses(st.session_state.responses[selected_role]):
-                st.warning("No responses found.")
-            else:
-                with st.spinner("Analyzing full report with GPT..."):
-                    full_feedback = enhanced_ai_service.get_full_report_feedback(
-                        st.session_state.responses[selected_role], competency_sections, selected_role)
-                    st.session_state.full_feedback = full_feedback
-
         if st.session_state.full_feedback:
+            st.markdown("#### 📊 AI Report Analysis")
             if st.session_state.full_feedback.startswith("⚠️"):
                 st.error(st.session_state.full_feedback)
             else:
                 st.markdown(
-                    f"""
-                    **֎🇦🇮 AI Suggestions:**
-                    <div style="
-                        max-height: 250px; 
-                        overflow-y: auto; 
-                        padding: 0.5rem; 
-                        border: 1px solid #ddd; 
-                        border-radius: 8px;
-                        background-color: #f9f9f9;">
-                        {st.session_state.full_feedback}
-                    </div>
-                    """,
+                    f'<div class="scrollable-feedback">{st.session_state.full_feedback}</div>',
                     unsafe_allow_html=True
                 )
+
+    with col2:
+        # Sidebar content - Progress dashboard
+        render_progress_dashboard_sorted(competency_sections, st.session_state.selected_role)
+
+    # Footer
+    st.markdown("""
+       <div style='text-align: center; margin-top: 3rem; padding: 2rem; background: #f8f9fa; border-radius: 10px;'>
+           <p style='color: #666; margin: 0;'>
+               <strong>Engineering Report Deck</strong> • Confidence with Clarity
+           </p>
+           <p style='color: #888; font-size: 0.9rem; margin: 0.5rem 0 0 0;'>
+               TurtleTEC Solutions Africa
+               © 2025. ALL RIGHTS RESERVED.
+           </p>
+       </div>
+       """, unsafe_allow_html=True)
 
 
 def main_ui():

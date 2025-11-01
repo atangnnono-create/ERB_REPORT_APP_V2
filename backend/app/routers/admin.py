@@ -184,7 +184,7 @@ def get_database_stats(db: Session = Depends(get_db)):
         total_records = users_count + reports_count + audit_logs_count
 
         # Table list
-        if "sqlite" in settings.database_url:
+        if "sqlite" in settings.DATABASE_URL:
             tables_result = db.execute(text(
                 "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'"
             )).fetchall()
@@ -197,8 +197,8 @@ def get_database_stats(db: Session = Depends(get_db)):
 
         # Database size
         db_size_mb = 0
-        if 'sqlite' in settings.database_url:
-            db_path = settings.database_url.replace('sqlite:///', '')
+        if 'sqlite' in settings.DATABASE_URL:
+            db_path = settings.DATABASE_URL.replace('sqlite:///', '')
             if os.path.exists(db_path):
                 db_size_mb = round(os.path.getsize(db_path) / (1024 * 1024), 2)
         else:
@@ -215,7 +215,7 @@ def get_database_stats(db: Session = Depends(get_db)):
             'audit_logs_count': audit_logs_count,
             'table_count': len(tables),
             'existing_tables': sorted(tables),
-            'database_type': 'sqlite' if 'sqlite' in settings.database_url else 'postgresql',
+            'database_type': 'sqlite' if 'sqlite' in settings.DATABASE_URL else 'postgresql',
             'timestamp': datetime.now().isoformat(),
         }
 
@@ -233,7 +233,7 @@ def get_database_health(db: Session = Depends(get_db)):
         response_time = round((time.time() - start_time) * 1000, 2)  # ms
 
         # Get connection info
-        if "postgresql" in settings.database_url:
+        if "postgresql" in settings.DATABASE_URL:
             connections_result = db.execute(text(
                 "SELECT count(*) FROM pg_stat_activity WHERE state = 'active'"
             )).fetchone()
@@ -268,7 +268,7 @@ def get_database_health(db: Session = Depends(get_db)):
 def get_database_tables(db: Session = Depends(get_db)):
     """Get list of database tables with row counts"""
     try:
-        if "sqlite" in settings.database_url:
+        if "sqlite" in settings.DATABASE_URL:
             tables_result = db.execute(text("""
                 SELECT name as table_name
                 FROM sqlite_master 
@@ -315,8 +315,8 @@ def get_database_tables(db: Session = Depends(get_db)):
 def get_database_size(db: Session = Depends(get_db)):
     """Get database storage metrics"""
     try:
-        if 'sqlite' in settings.database_url:
-            db_path = settings.database_url.replace('sqlite:///', '')
+        if 'sqlite' in settings.DATABASE_URL:
+            db_path = settings.DATABASE_URL.replace('sqlite:///', '')
             if os.path.exists(db_path):
                 file_size = os.path.getsize(db_path)
                 db_size_mb = round(file_size / (1024 * 1024), 2)

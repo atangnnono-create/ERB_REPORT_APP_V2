@@ -89,7 +89,7 @@ def get_competency_sections_for_ai():
     """Get competency sections based on user role for AI features"""
     from utilities.comps import engineer_competencies, technician_competencies, technologist_competencies
 
-    selected_role = st.session_state.get("selected_role", "Engineer")
+    selected_role = st.session_state.get("selected_role")
 
     if selected_role == "Engineering Technologist":
         return technologist_competencies
@@ -134,7 +134,7 @@ def ai_assistant_page():
     <div style="background: linear-gradient(90deg, #667eea, #764ba2); padding: 1.5rem; border-radius: 10px; color: white; margin-bottom: 2rem;">
         <h3 style="margin:0; color: white;">AI-Powered Report Enhancement</h3>
         <p style="margin:0.5rem 0 0 0; color: white; opacity: 0.9;">
-            Smart templates, gap analysis, and quality improvement for your engineering reports
+            Smart templates, gap analysis, and quality improvement for your ERB reports
         </p>
     </div>
     """, unsafe_allow_html=True)
@@ -208,6 +208,18 @@ def ai_assistant_page():
     except Exception as e:
         st.error(f"Error loading AI features: {str(e)}")
         st.info("Please try refreshing the page or contact support if the issue persists.")
+
+    st.markdown("""
+             <div style='text-align: center; margin-top: 3rem; padding: 2rem; background: #f8f9fa; border-radius: 10px;'>
+                 <p style='color: #666; margin: 0;'>
+                     <strong>Engineering Report Deck</strong> • Confidence with Clarity
+                 </p>
+                 <p style='color: #888; font-size: 0.9rem; margin: 0.5rem 0 0 0;'>
+                     TurtleTEC Solutions Africa
+                     © 2025. ALL RIGHTS RESERVED.
+                 </p>
+             </div>
+             """, unsafe_allow_html=True)
 
 def handle_authentication():
     """Handle login/registration flow"""
@@ -482,15 +494,76 @@ def main():
         </style>
     """, unsafe_allow_html=True)
 
-    # App header
     st.markdown("""
-        <div style="background: linear-gradient(90deg, #2c3e50, #3498db); padding: 2rem; border-radius: 10px; text-align: center; color: white; margin-bottom: 2rem;">
+        <style>
+        /* Semi-sticky banner styles */
+        .main-header-banner {
+            position: sticky;
+            top: 0;
+            z-index: 999;
+            transition: all 0.3s ease;
+            background: linear-gradient(90deg, #2c3e50, #3498db);
+            padding: 2rem;
+            border-radius: 10px;
+            text-align: center;
+            color: white;
+            margin-bottom: 2rem;
+        }
+
+        .main-header-banner.compact {
+            padding: 1rem;
+            margin-bottom: 1rem;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        .main-header-banner.compact h1 {
+            font-size: 1.8rem !important;
+            margin: 0 !important;
+        }
+
+        .main-header-banner.compact p {
+            font-size: 1rem !important;
+            margin: 0.2rem 0 0 0 !important;
+        }
+        </style>
+    """, unsafe_allow_html=True)
+
+    # Semi-sticky app header
+    st.markdown("""
+        <div class="main-header-banner" id="mainBanner">
             <h1 style="margin:0; font-size: 2.5rem;">🏭 Engineering Report Deck</h1>
             <p style="margin:0; font-size: 1.2rem;">AI Revolution Driving Engineering Evolution ✨</p>
             <p style="margin-top: 0.5rem; font-size: 0.9rem; opacity: 0.9;">
                 <b>Version:</b> 2.0 — Tsodilo Edition
             </p>
         </div>
+
+        <script>
+        // Semi-sticky banner behavior
+        let lastScrollTop = 0;
+        const banner = document.getElementById('mainBanner');
+        const scrollThreshold = 100;
+
+        window.addEventListener('scroll', function() {
+            let scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+
+            if (scrollTop > scrollThreshold) {
+                // Scrolling down - hide/compact
+                if (scrollTop > lastScrollTop) {
+                    banner.classList.add('compact');
+                } 
+                // Scrolling up - show
+                else {
+                    banner.classList.remove('compact');
+                }
+            } else {
+                // Near top - always show full banner
+                banner.classList.remove('compact');
+            }
+
+            lastScrollTop = scrollTop;
+        });
+        </script>
     """, unsafe_allow_html=True)
 
     # Initialize session state

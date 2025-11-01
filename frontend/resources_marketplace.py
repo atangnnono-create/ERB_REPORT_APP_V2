@@ -6,10 +6,10 @@ import json
 
 
 def resources_marketplace():
-    """Resources & Marketplace for ERB Products and Services"""
+    """Resources & Marketplace for ERD Products and Services"""
 
     st.set_page_config(
-        page_title="Resources & Marketplace - ERB Platform",
+        page_title="Resources & Marketplace - ERD Platform",
         page_icon="🛍️",
         layout="wide"
     )
@@ -69,7 +69,7 @@ def resources_marketplace():
     col1, col2 = st.columns([3, 1])
 
     with col1:
-        st.title("🎓 ERB Resources & Marketplace")
+        st.title("🎓 ERD Resources & Marketplace")
         st.markdown("""
         **Level up your engineering career** with premium resources, expert coaching, 
         and professional tools designed to help you succeed in the ERB process.
@@ -143,11 +143,11 @@ def resources_marketplace():
 
         # Email List Signup
         st.markdown("---")
-        st.subheader("🚀 Get Weekly ERB Tips & Updates")
+        st.subheader("🚀 Get Weekly ERD Tips & Updates")
         email = st.text_input("Enter your email for exclusive content:", placeholder="your.email@example.com")
         if st.button("Subscribe to Updates", type="primary"):
             if email:
-                st.success("🎉 Welcome aboard! You'll receive our next ERB tips email.")
+                st.success("🎉 Welcome aboard! You'll receive our next ERD tips email.")
             else:
                 st.warning("Please enter your email address.")
 
@@ -162,12 +162,12 @@ def resources_marketplace():
             with st.container():
                 st.markdown('<div class="product-card">', unsafe_allow_html=True)
                 st.markdown('<div class="price-tag">P450</div>', unsafe_allow_html=True)
-                st.subheader("📖 The Complete Guide to Writing Professional ERB Reports")
+                st.subheader("📖 The Complete Guide to Engineering Registration In Botswana")
                 st.markdown("""
                 **Your ultimate guide to ERB success:**
 
                 ✨ **What's Included:**
-                - 160+ page comprehensive guide
+                - 180+ page comprehensive guide
                 - Step-by-step writing process
                 - 50+ real examples (approved reports)
                 - Common pitfalls and how to avoid them
@@ -194,7 +194,7 @@ def resources_marketplace():
             with st.container():
                 st.markdown('<div class="product-card">', unsafe_allow_html=True)
                 st.markdown('<div class="price-tag">P400</div>', unsafe_allow_html=True)
-                st.subheader("🎬 ERB Mastery Video Course")
+                st.subheader("🎬 ERD Mastery Video Course")
                 st.markdown("""
                 **From beginner to expert - video-based learning:**
 
@@ -215,7 +215,7 @@ def resources_marketplace():
                 """)
 
                 if st.button("Enroll Now - P400", key="course_purchase", use_container_width=True, type="primary"):
-                    st.session_state.current_product = "ERB Mastery Video Course"
+                    st.session_state.current_product = "ERD Mastery Video Course"
                     st.session_state.product_price = 400
                     st.rerun()
 
@@ -225,7 +225,7 @@ def resources_marketplace():
 
     # TAB 3: MERCHANDISE
     with tab3:
-        st.header("🛍️ ERB Branded Merchandise")
+        st.header("🛍️ ERD Branded Merchandise")
         st.markdown("Show your engineering pride with our professional merchandise")
 
         col1, col2, col3 = st.columns(3)
@@ -242,7 +242,7 @@ def resources_marketplace():
                 - Dishwasher safe
                 - 15oz capacity
                 """)
-                st.image("https://via.placeholder.com/200x150/667eea/ffffff?text=ERB+Mug", use_container_width=True)
+                st.image("https://via.placeholder.com/200x150/667eea/ffffff?text=ERD+Mug", use_container_width=True)
                 if st.button("Add to Cart - P100", key="mug_purchase", use_container_width=True):
                     st.success("✅ Mug added to cart!")
                 st.markdown('</div>', unsafe_allow_html=True)
@@ -259,7 +259,7 @@ def resources_marketplace():
                 - Multiple sizes available
                 - Machine washable
                 """)
-                st.image("https://via.placehold.co/200x150/764ba2/ffffff?text=ERB+Shirt", use_container_width=True)
+                st.image("https://via.placehold.co/200x150/764ba2/ffffff?text=ERD+Shirt", use_container_width=True)
                 if st.button("Add to Cart - P400", key="shirt_purchase", use_container_width=True):
                     st.success("✅ T-Shirt added to cart!")
                 st.markdown('</div>', unsafe_allow_html=True)
@@ -419,7 +419,7 @@ def resources_marketplace():
     with col1:
         st.markdown("**💼 Business Info**")
         st.markdown("""
-        ERB Resources & Marketplace  
+        ERD Resources & Marketplace  
         Supporting Engineers Since 2024  
         Email: customengineeringreports.com
         """)
@@ -441,6 +441,19 @@ def resources_marketplace():
         🕒 24h response time  
         💬 Live chat available
         """)
+
+        # Footer
+    st.markdown("""
+          <div style='text-align: center; margin-top: 3rem; padding: 2rem; background: #f8f9fa; border-radius: 10px;'>
+              <p style='color: #666; margin: 0;'>
+                  <strong>Engineering Report Deck</strong> • Confidence with Clarity
+              </p>
+              <p style='color: #888; font-size: 0.9rem; margin: 0.5rem 0 0 0;'>
+                  TurtleTEC Solutions Africa
+                  © 2025. ALL RIGHTS RESERVED.
+              </p>
+          </div>
+          """, unsafe_allow_html=True)
 
 
 def main():

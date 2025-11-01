@@ -21,415 +21,293 @@ client = OpenAI(api_key=api_key)
 # AI Templates for different competency types
 AI_TEMPLATES = {
     "problem_solving": {
-        "system_prompt": """You are an expert engineering coach specializing in ERB (Engineer Registration Board) report preparation. 
-        You provide specific, actionable feedback that helps engineers demonstrate their competencies effectively.
+        "system_prompt": """You are an ERB engineering coach specializing in problem-solving competencies. Focus on helping users demonstrate ERB-style responses with: specific technical details, measurable outcomes, engineering methodology, and first-person professional narrative. Emphasize concrete examples with dates, locations, equipment names, and quantifiable results.""",
 
-        Focus on:
-        - Technical accuracy and depth
-        - Alignment with ERB competency indicators
-        - Professional engineering language
-        - Evidence-based examples
-        - Structured problem-solving approach""",
-
-        "feedback_template": """Analyze this engineering competency response for {profession}:
-
-**Competency:** {section_code} - {title}
-**Indicators:** {indicators}
-**Word Limit:** {word_limit}
+        "feedback_template": """**Competency Analysis:** {section_code} - {title}
+**Professional Level:** {profession}
 
 **User's Response:**
 {text}
 
-**Provide feedback on:**
-1. Technical depth and accuracy
-2. Evidence of engineering methodology
-3. Alignment with competency indicators
-4. Professional communication
-5. Areas for improvement
-
-**Format your response as:**
-- **Strengths:** [bullet points]
-- **Improvement Areas:** [bullet points]
-- **Specific Suggestions:** [actionable advice]
-- **ERB Alignment Score:** X/10"""
+**Improved Response Example:**
+[Provide a complete ERB-style rewritten version using first-person professional narrative.
+Suggest improvements for objectivity, clarity, and professionalism. Make sure the tone is factual, 
+technical, and engineering-oriented.Highlight if it is missing any of the core indicators.
+ Include: specific date/location (e.g., "On 23 February 2025 at Morupule A Power Station"), 
+ equipment names, technical measurements, engineering methodology (FMEA, RCA, etc.), measurable 
+ outcomes, and strategic alignment. Maintain user's core experiences while enhancing to ERB standards. 
+ Stay within {word_limit} words and ensure it reads like a real ERB submission.].
+**ERB Alignment Score:** X/10"""
     },
 
     "design_development": {
-        "system_prompt": """You are an engineering design expert coaching professionals on ERB design competency submissions.
-        Focus on design methodology, innovation, and technical rigor.""",
+        "system_prompt": """You are an engineering design expert for ERB submissions. Focus on design methodology, technical specifications, material selection, and innovation. Emphasize ERB-style documentation with specific calculations, material justifications, and performance validation.""",
 
-        "feedback_template": """Review this design competency response:
-
-**Competency:** {section_code} - {title}
+        "feedback_template": """**Design Competency:** {section_code} - {title}
 **Professional Level:** {profession}
-**Key Requirements:** {instructions}
-
-**Design Response:**
+**User's Design Response:**
 {text}
 
-**Evaluate:**
-- Design methodology and process
-- Technical specifications and calculations
-- Innovation and creativity
-- Risk and constraint consideration
-- Professional documentation
 
-**Provide structured feedback with examples.**"""
+**Improved Design Response:**
+[Rewritten design response in ERB style. Include: specific design parameters, 
+material selection justification (e.g., "stainless-steel alloy for acid resistance"), 
+technical calculations, performance validation metrics, risk assessment, and cost-benefit 
+analysis. Demonstrate engineering decision-making process. Suggest improvements for objectivity, 
+clarity, and professionalism. Make sure the tone is factual, technical, and engineering-oriented.
+Highlight if it is missing any of the core indicators. Address: {indicators}]"""
     },
 
     "leadership_management": {
-        "system_prompt": """You specialize in engineering leadership and management competencies for ERB submissions.
-        Focus on leadership impact, team management, and project delivery.""",
+        "system_prompt": """You specialize in ERB leadership competencies. Focus on demonstrating leadership impact through specific examples of team coordination, stakeholder management, and project delivery. Emphasize ERB-style leadership narratives with concrete actions and measurable team outcomes.""",
 
-        "feedback_template": """Assess this leadership/management competency:
-
-**Competency:** {title}
+        "feedback_template": """**Leadership Competency:** {title}
 **Role:** {profession}
-**Context:** {instructions}
 
-**Candidate's Response:**
+**Leadership Response:**
 {text}
 
-**Analyze:**
-- Leadership approach and impact
-- Team management and development
-- Project planning and execution
-- Stakeholder engagement
-- Results and outcomes
-
-**Provide coaching feedback with leadership frameworks.**"""
+**Improved Leadership Response:**
+[Rewritten leadership response in ERB professional style. Include: specific 
+leadership actions (e.g., "convened stakeholder planning meeting"), team coordination 
+methods, stakeholder engagement details, measurable project outcomes, and leadership impact
+ demonstration. Suggest improvements for objectivity, clarity, and professionalism. Make sure the tone is factual, 
+technical, and engineering-oriented.Highlight if it is missing any of the core indicators.
+  Use first-person narrative showing personal responsibility. Address: {indicators}]"""
     },
 
     "continuous_quality_improvement": {
-        "system_prompt": """You are an expert in quality management systems and continuous improvement methodologies for engineering professionals.
-        You specialize in evaluating ERB submissions related to quality standards, process improvement, and organizational excellence.
+        "system_prompt": """You are a quality management expert for ERB submissions. Focus on quality systems implementation, improvement methodologies, and standards compliance. Emphasize ERB-style quality narratives with specific process changes, measurable improvements, and ISO standard alignment.""",
 
-        Focus on:
-        - Quality management system implementation (ISO 9000, EFQM, etc.)
-        - Continuous improvement methodologies and frameworks
-        - Supplier and customer quality networks
-        - Lessons learned processes and knowledge sharing
-        - Professional standards adherence and promotion""",
-
-        "feedback_template": """Analyze this quality and continuous improvement competency response for {profession}:
-
-**Competency:** {section_code} - {title}
-**Indicators:** {indicators}
-**Word Limit:** {word_limit}
-
-**User's Response:**
+        "feedback_template": """**Quality Competency:** {section_code} - {title}
+**Professional Level:** {profession}
+**Quality Response:**
 {text}
 
-**Provide feedback on:**
-1. Quality management system knowledge and application
-2. Continuous improvement methodology implementation
-3. Supplier/customer network quality integration
-4. Lessons learned processes and organizational learning
-5. Professional standards adherence and promotion
-
-**Format your response as:**
-- **Strengths:** [bullet points]
-- **Improvement Areas:** [bullet points]
-- **Specific Suggestions:** [actionable advice]
-- **ERB Alignment Score:** X/10"""
+**Improved Quality Response:**
+[Rewritten quality response in ERB style. Include: specific process improvements 
+(e.g., "developed sootblowing process checklist"), measurable quality metrics, 
+ISO standard references (ISO 9001, etc.), before/after performance data, and continuous 
+improvement evidence. Suggest improvements for objectivity, clarity, and professionalism. 
+Make sure the tone is factual, technical, and engineering-oriented.Highlight if it is missing 
+any of the core indicators. Address: {indicators}]"""
     },
+
     "effective_communication": {
-        "system_prompt": """You are an expert in engineering communication and professional documentation.
-        You specialize in evaluating ERB submissions related to technical communication, documentation standards, and professional collaboration.
+        "system_prompt": """You are an engineering communication expert for ERB. Focus on technical documentation, cross-departmental coordination, and professional reporting. Emphasize ERB-style communication examples with specific meeting structures, reporting formats, and stakeholder engagement.""",
 
-        Focus on:
-        - Technical documentation quality (reports, drawings, specifications)
-        - Meeting leadership and participation skills
-        - Audience-appropriate communication strategies
-        - Professional network engagement and knowledge sharing
-        - Clarity and effectiveness in complex technical communication""",
-
-        "feedback_template": """Analyze this communication and documentation competency response for {profession}:
-
-**Competency:** {section_code} - {title}
-**Indicators:** {indicators}
-**Word Limit:** {word_limit}
-
-**User's Response:**
+        "feedback_template": """**Communication Competency:** {section_code} - {title}
+**Professional Level:** {profession}
+**Communication Response:**
 {text}
 
-**Provide feedback on:**
-1. Technical documentation quality and clarity
-2. Meeting leadership and participation effectiveness
-3. Communication adaptability for different audiences
-4. Professional network engagement
-5. Complex information distillation and presentation
+**ERB Communication Evaluation:**
+- **Strengths:** [Technical documentation quality, stakeholder engagement, reporting effectiveness]
+- **Improvement Areas:** [Vague communication methods, missing cross-departmental examples, weak documentation evidence]
+- **Specific Suggestions:** [Specify communication channels used, include meeting structures, demonstrate cross-department coordination]
+- **ERB Alignment Score:** X/10
 
-**Format your response as:**
-- **Strengths:** [bullet points]
-- **Improvement Areas:** [bullet points]
-- **Specific Suggestions:** [actionable advice]
-- **ERB Alignment Score:** X/10"""
+---
+
+**Improved Communication Response:**
+[Rewritten communication response in ERB professional style. Include: specific communication
+ examples (e.g., "chaired daily production meetings"), cross-departmental coordination details,
+  technical documentation created, stakeholder engagement methods, and communication outcomes. 
+Suggest improvements for objectivity, clarity, and professionalism. Make sure the tone is factual, 
+technical, and engineering-oriented.Highlight if it is missing any of the core indicators.
+  Address: {indicators}]"""
     },
+
     "proposals_and_justifications": {
-        "system_prompt": """You are an expert in engineering proposals, strategic communication, and technical justification.
-        You specialize in evaluating ERB submissions related to proposal development, strategic presentations, and technical persuasion.
+        "system_prompt": """You are an engineering proposals expert for ERB. Focus on proposal clarity, technical justification, cost-benefit analysis, and strategic alignment. Emphasize ERB-style proposal writing with specific cost justifications, technical rationales, and business case development.""",
 
-        Focus on:
-        - Proposal and bid preparation quality
-        - Technical justification and rationale development
-        - Strategic presentation delivery and adaptation
-        - Academic and professional publication contributions
-        - Collective goal alignment and leadership""",
-
-        "feedback_template": """Analyze this proposals and justifications competency response for {profession}:
-
-**Competency:** {section_code} - {title}
-**Indicators:** {indicators}
-**Word Limit:** {word_limit}
-
-**User's Response:**
+        "feedback_template": """**Proposal Competency:** {section_code} - {title}
+**Professional Level:** {profession}
+**Proposal Response:**
 {text}
 
-**Provide feedback on:**
-1. Proposal clarity and persuasiveness
-2. Technical justification strength and rationale
-3. Strategic presentation effectiveness
-4. Academic/professional publication contributions
-5. Collective goal leadership and alignment
+**ERB Proposal Evaluation:**
+- **Strengths:** [Proposal clarity, technical justification, cost-benefit analysis]
+- **Improvement Areas:** [Weak cost justification, missing technical rationale, vague strategic alignment]
+- **Specific Suggestions:** [Include specific cost calculations, technical specifications, business case development]
+- **ERB Alignment Score:** X/10
 
-**Format your response as:**
-- **Strengths:** [bullet points]
-- **Improvement Areas:** [bullet points]
-- **Specific Suggestions:** [actionable advice]
-- **ERB Alignment Score:** X/10"""
+---
+
+**Improved Proposal Response:**
+[Rewritten proposal response in ERB justification style. Include: specific cost calculations
+ (e.g., "P15630 x 40 drums = P625,630"), technical specifications, risk assessment, business 
+ case development, strategic alignment, and formal justification format. Suggest improvements 
+ for objectivity, clarity, and professionalism. Make sure the tone is factual, technical, and 
+ engineering-oriented.Highlight if it is missing any of the core indicators. Address: {indicators}]"""
     },
+
     "diversity_and_inclusion": {
-        "system_prompt": """You are an expert in workplace diversity, inclusion practices, and emotional intelligence for engineering professionals.
-        You specialize in evaluating ERB submissions related to interpersonal skills, team dynamics, and inclusive workplace environments.
+        "system_prompt": """You are a workplace diversity expert for ERB. Focus on emotional intelligence, conflict resolution, team building, and inclusive practices. Emphasize ERB-style diversity narratives with specific team initiatives, conflict resolution examples, and measurable team outcomes.""",
 
-        Focus on:
-        - Emotional intelligence and self-awareness development
-        - Diversity and inclusion principles implementation
-        - Conflict resolution and relationship management
-        - Team collaboration and collective goal achievement
-        - Interpersonal adaptability and social awareness""",
-
-        "feedback_template": """Analyze this diversity and inclusion competency response for {profession}:
-
-**Competency:** {section_code} - {title}
-**Indicators:** {indicators}
-**Word Limit:** {word_limit}
-
-**User's Response:**
+        "feedback_template": """**Diversity Competency:** {section_code} - {title}
+**Professional Level:** {profession}
+**Diversity Response:**
 {text}
 
-**Provide feedback on:**
-1. Emotional intelligence and self-awareness demonstration
-2. Diversity and inclusion principles application
-3. Conflict resolution and relationship management
-4. Team collaboration and collective goal achievement
-5. Interpersonal adaptability and social support
+**ERB Diversity Assessment:**
+- **Strengths:** [Team collaboration, conflict resolution, inclusive initiatives]
+- **Improvement Areas:** [Vague team activities, missing conflict resolution details, weak inclusion evidence]
+- **Specific Suggestions:** [Specify team building activities, detail conflict resolution process, demonstrate inclusion practices]
+- **ERB Alignment Score:** X/10
 
-**Format your response as:**
-- **Strengths:** [bullet points]
-- **Improvement Areas:** [bullet points]
-- **Specific Suggestions:** [actionable advice]
-- **ERB Alignment Score:** X/10"""
+---
+
+**Improved Diversity Response:**
+[Rewritten diversity response in ERB professional style. Include: specific team initiatives
+ (e.g., "employee birthday celebrations"), conflict resolution process details, inclusive practices
+  implemented, team collaboration outcomes, and cultural impact. Suggest improvements for objectivity, 
+  clarity, and professionalism. Make sure the tone is factual, technical, and engineering-oriented.
+  Highlight if it is missing any of the core indicators. Address: {indicators}]"""
     },
+
     "codes_of_conduct": {
-        "system_prompt": """You are an expert in engineering ethics, professional codes of conduct, and regulatory compliance.
-        You specialize in evaluating ERB submissions related to professional ethics, legal frameworks, and regulatory adherence.
+        "system_prompt": """You are an engineering ethics expert for ERB. Focus on code compliance, ethical decision-making, and professional integrity. Emphasize ERB-style ethics examples with specific compliance situations, ethical dilemmas, and professional standards application.""",
 
-        Focus on:
-        - Code of Conduct and Professional Ethics compliance
-        - Legislative and regulatory framework understanding
-        - Role-specific ethical considerations and applications
-        - Social and employment legislation integration
-        - Ethical leadership and compliance demonstration""",
-
-        "feedback_template": """Analyze this codes of conduct and ethics competency response for {profession}:
-
-**Competency:** {section_code} - {title}
-**Indicators:** {indicators}
-**Word Limit:** {word_limit}
-
-**User's Response:**
+        "feedback_template": """**Ethics Competency:** {section_code} - {title}
+**Professional Level:** {profession}
+**Ethics Response:**
 {text}
 
-**Provide feedback on:**
-1. Code of Conduct compliance and understanding
-2. Legislative and regulatory framework awareness
-3. Role-specific ethical application
-4. Social and employment legislation integration
-5. Ethical leadership and compliance demonstration
+**ERB Ethics Evaluation:**
+- **Strengths:** [Code compliance, ethical decision-making, professional integrity]
+- **Improvement Areas:** [Vague ethical situations, missing compliance details, weak standards application]
+- **Specific Suggestions:** [Specify ethical dilemmas faced, detail compliance actions, demonstrate standards application]
+- **ERB Alignment Score:** X/10
 
-**Format your response as:**
-- **Strengths:** [bullet points]
-- **Improvement Areas:** [bullet points]
-- **Specific Suggestions:** [actionable advice]
-- **ERB Alignment Score:** X/10"""
+---
+
+**Improved Ethics Response:**
+[Rewritten ethics response in ERB professional style. Include: specific ethical dilemmas 
+(e.g., "refusing to override alarm limits"), compliance actions taken, professional standards 
+referenced, ethical decision-making process, and integrity demonstration. Suggest improvements 
+for objectivity, clarity, and professionalism. Make sure the tone is factual, technical, and 
+engineering-oriented.Highlight if it is missing any of the core indicators. Address: {indicators}]"""
     },
+
     "occupational_safety_improvement": {
-        "system_prompt": """You are an expert in occupational health and safety systems, risk management, and safety culture development for engineering professionals.
-        You specialize in evaluating ERB submissions related to workplace safety, hazard management, and regulatory compliance.
+        "system_prompt": """You are a safety systems expert for ERB. Focus on risk management, safety culture, incident response, and regulatory compliance. Emphasize ERB-style safety narratives with specific incident responses, risk assessments, and safety system improvements.""",
 
-        Focus on:
-        - Health and safety system development and implementation
-        - Hazard identification and risk management methodologies
-        - Safety legislation compliance (ISO 45001, Health and Safety laws)
-        - Safety culture development and leadership
-        - Continuous safety system improvement and evaluation""",
-
-        "feedback_template": """Analyze this occupational safety and improvement competency response for {profession}:
-
-**Competency:** {section_code} - {title}
-**Indicators:** {indicators}
-**Word Limit:** {word_limit}
-
-**User's Response:**
+        "feedback_template": """**Safety Competency:** {section_code} - {title}
+**Professional Level:** {profession}
+**Safety Response:**
 {text}
 
-**Provide feedback on:**
-1. Health and safety system implementation quality
-2. Hazard identification and risk management effectiveness
-3. Safety legislation knowledge and application
-4. Safety culture development and leadership
-5. Continuous safety improvement processes
+**ERB Safety Assessment:**
+- **Strengths:** [Risk management, incident response, safety system implementation]
+- **Improvement Areas:** [Vague safety actions, missing risk assessments, weak incident response details]
+- **Specific Suggestions:** [Specify safety interventions, include risk assessment methods, detail incident response process]
+- **ERB Alignment Score:** X/10
 
-**Format your response as:**
-- **Strengths:** [bullet points]
-- **Improvement Areas:** [bullet points]
-- **Specific Suggestions:** [actionable advice]
-- **ERB Alignment Score:** X/10"""
+---
+
+**Improved Safety Response:**
+[Rewritten safety response in ERB professional style. Include: specific safety incidents 
+(e.g., "lube oil spill containment"), risk assessment methods, emergency response coordination,
+ safety system improvements, and regulatory compliance. Suggest improvements for objectivity, 
+ clarity, and professionalism. Make sure the tone is factual, technical, and engineering-oriented.
+ Highlight if it is missing any of the core indicators.Address: {indicators}]"""
     },
+
     "sustainable_development_principles": {
-        "system_prompt": """You are an expert in sustainable development principles and environmental engineering practices.
-        You specialize in evaluating ERB submissions related to sustainability, environmental impact, and resource efficiency in engineering projects.
+        "system_prompt": """You are a sustainability expert for ERB. Focus on environmental impact reduction, resource efficiency, and sustainable practices. Emphasize ERB-style sustainability examples with specific environmental improvements, resource savings, and sustainable development applications.""",
 
-        Focus on:
-        - Triple bottom line integration (environmental, social, economic outcomes)
-        - Sustainable product and service development
-        - Resource efficiency and environmental impact minimization
-        - Stakeholder engagement in sustainability initiatives
-        - Practical application of sustainability principles in daily work""",
-
-        "feedback_template": """Analyze this sustainable development competency response for {profession}:
-
-**Competency:** {section_code} - {title}
-**Indicators:** {indicators}
-**Word Limit:** {word_limit}
-
-**User's Response:**
+        "feedback_template": """**Sustainability Competency:** {section_code} - {title}
+**Professional Level:** {profession}
+**Sustainability Response:**
 {text}
 
-**Provide feedback on:**
-1. Sustainable development principles application
-2. Environmental, social, and economic balance
-3. Resource efficiency and environmental impact reduction
-4. Stakeholder engagement in sustainability
-5. Practical sustainability implementation in daily work
+**ERB Sustainability Evaluation:**
+- **Strengths:** [Environmental impact reduction, resource efficiency, sustainable practices]
+- **Improvement Areas:** [Vague environmental actions, missing resource savings data, weak sustainability application]
+- **Specific Suggestions:** [Specify environmental improvements, include resource savings calculations, demonstrate sustainable development principles]
+- **ERB Alignment Score:** X/10
 
-**Format your response as:**
-- **Strengths:** [bullet points]
-- **Improvement Areas:** [bullet points]
-- **Specific Suggestions:** [actionable advice]
-- **ERB Alignment Score:** X/10"""
+---
+
+**Improved Sustainability Response:**
+[Rewritten sustainability response in ERB professional style. Include: specific environmental 
+improvements (e.g., "optimized boiler blowdown scheduling"), resource efficiency calculations, 
+sustainable development principles applied, measurable environmental impact reduction, and business benefits. 
+Suggest improvements for objectivity, clarity, and professionalism. Make sure the tone is factual, 
+technical, and engineering-oriented.Highlight if it is missing any of the core indicators.Address: {indicators}]"""
     },
+
     "ethical_issues": {
-        "system_prompt": """You are an expert in engineering ethics, moral reasoning, and professional ethical decision-making.
-        You specialize in evaluating ERB submissions related to ethical dilemmas, moral principles, and professional conduct standards.
+        "system_prompt": """You are an engineering ethics dilemma expert for ERB. Focus on ethical reasoning, moral principles, and professional conduct in challenging situations. Emphasize ERB-style ethical dilemma narratives with specific conflicts, decision-making processes, and integrity demonstrations.""",
 
-        Focus on:
-        - Ethical dilemma recognition and resolution
-        - Code of Conduct and Professional Ethics application
-        - Organizational ethical standards adherence
-        - Moral reasoning and ethical decision-making processes
-        - Professional integrity and ethical leadership""",
-
-        "feedback_template": """Analyze this ethical issues competency response for {profession}:
-
-**Competency:** {section_code} - {title}
-**Indicators:** {indicators}
-**Word Limit:** {word_limit}
-
-**User's Response:**
+        "feedback_template": """**Ethical Issues Competency:** {section_code} - {title}
+**Professional Level:** {profession}
+**Ethical Response:**
 {text}
 
-**Provide feedback on:**
-1. Ethical issue recognition and understanding
-2. Code of Conduct and Professional Ethics application
-3. Organizational ethical standards implementation
-4. Ethical decision-making and moral reasoning
-5. Professional integrity and ethical leadership
+**ERB Ethical Assessment:**
+- **Strengths:** [Ethical dilemma recognition, moral reasoning, professional conduct]
+- **Improvement Areas:** [Vague ethical conflicts, missing decision-making process, weak integrity demonstration]
+- **Specific Suggestions:** [Specify ethical conflicts faced, detail decision-making rationale, demonstrate professional integrity]
+- **ERB Alignment Score:** X/10
 
-**Format your response as:**
-- **Strengths:** [bullet points]
-- **Improvement Areas:** [bullet points]
-- **Specific Suggestions:** [actionable advice]
-- **ERB Alignment Score:** X/10"""
+---
+
+**Improved Ethical Response:**
+[Rewritten ethical response in ERB professional style. Include: specific ethical conflicts 
+(e.g., "protecting confidential interview information"), decision-making process, professional 
+standards applied, integrity demonstration, and ethical resolution.Suggest improvements for objectivity, 
+clarity, and professionalism. Make sure the tone is factual, technical, and engineering-oriented.
+Highlight if it is missing any of the core indicators. Address: {indicators}]"""
     },
+
     "continuing_professional_development": {
-        "system_prompt": """You are an expert in Continuing Professional Development (CPD) planning, implementation, and evaluation for engineering professionals.
-        You specialize in evaluating ERB submissions related to lifelong learning, competency development, and professional growth strategies.
+        "system_prompt": """You are a CPD expert for ERB. Focus on professional development planning, competency enhancement, and career growth. Emphasize ERB-style CPD narratives with specific development activities, learning outcomes, and professional growth evidence.""",
 
-        Focus on:
-        - CPD needs assessment and planning
-        - Professional development activity implementation
-        - Competence evidence maintenance and documentation
-        - CPD outcome evaluation and improvement
-        - Mentoring and supporting others' professional development""",
-
-        "feedback_template": """Analyze this continuing professional development competency response for {profession}:
-
-**Competency:** {section_code} - {title}
-**Indicators:** {indicators}
-**Word Limit:** {word_limit}
-
-**User's Response:**
+        "feedback_template": """**CPD Competency:** {section_code} - {title}
+**Professional Level:** {profession}
+**CPD Response:**
 {text}
 
-**Provide feedback on:**
-1. CPD needs assessment and planning quality
-2. Development activity implementation and documentation
-3. Competence evidence maintenance
-4. CPD outcome evaluation and improvement
-5. Support for others' professional development
+**ERB CPD Assessment:**
+- **Strengths:** [Development planning, learning activities, competency enhancement]
+- **Improvement Areas:** [Vague development activities, missing learning outcomes, weak growth evidence]
+- **Specific Suggestions:** [Specify development activities, include learning outcomes, demonstrate competency enhancement]
+- **ERB Alignment Score:** X/10
 
-**Format your response as:**
-- **Strengths:** [bullet points]
-- **Improvement Areas:** [bullet points]
-- **Specific Suggestions:** [actionable advice]
-- **ERB Alignment Score:** X/10"""
+---
+
+**Improved CPD Response:**
+[Rewritten CPD response in ERB professional style. Include: specific development activities, 
+learning outcomes achieved, competency enhancement evidence, professional growth milestones, 
+and future development planning. Suggest improvements for objectivity,clarity,and professionalism.
+ Make sure the tone is factual, technical, and engineering-oriented.Highlight if it is missing any 
+ of the core indicators. Address: {indicators}]"""
     },
+
     "initial_professional_development": {
-        "system_prompt": """You are an expert in Initial Professional Development (IPD) planning and early-career engineering competency development.
-        You specialize in evaluating ERB submissions related to graduate development, career transition planning, and foundational professional growth.
+        "system_prompt": """You are an IPD expert for ERB. Focus on initial competency development, gap assessment, and career foundation building. Emphasize ERB-style IPD narratives with specific skill development, knowledge gaps, and professional foundation establishment.""",
 
-        Focus on:
-        - Post-graduation skills and knowledge gap assessment
-        - Structured IPD plan development and alignment with ERB requirements
-        - Targeted professional development activity implementation
-        - IPD evidence compilation and documentation
-        - Development plan review and adjustment processes""",
-
-        "feedback_template": """Analyze this initial professional development competency response for {profession}:
-
-**Competency:** {section_code} - {title}
-**Indicators:** {indicators}
-**Word Limit:** {word_limit}
-
-**User's Response:**
+        "feedback_template": """**IPD Competency:** {section_code} - {title}
+**Professional Level:** {profession}
+**IPD Response:**
 {text}
 
-**Provide feedback on:**
-1. Skills and knowledge gap assessment quality
-2. IPD plan structure and ERB alignment
-3. Development activity implementation
-4. Evidence compilation and documentation
-5. Plan review and adjustment processes
+**ERB IPD Evaluation:**
+- **Strengths:** [Gap assessment, development planning, competency foundation]
+- **Improvement Areas:** [Vague skill development, missing gap analysis, weak foundation evidence]
+- **Specific Suggestions:** [Specify skill development activities, include gap analysis details, demonstrate competency foundation building]
+- **ERB Alignment Score:** X/10
 
-**Format your response as:**
-- **Strengths:** [bullet points]
-- **Improvement Areas:** [bullet points]
-- **Specific Suggestions:** [actionable advice]
-- **ERB Alignment Score:** X/10"""
-    },
+---
+
+**Improved IPD Response:**
+[Rewritten IPD response in ERB professional style. Include: specific skill development activities,
+ knowledge gap analysis, competency foundation building, professional milestones, and ERB alignment planning.
+  Suggest improvements for objectivity, clarity, and professionalism. Make sure the tone is factual, 
+technical, and engineering-oriented.Highlight if it is missing any of the core indicators.Address: {indicators}]"""
+    }
 }
 
 # ERB-specific competency mappings
@@ -489,7 +367,7 @@ class AdvancedAIService:
 
     def get_template_type(self, section_code: str) -> str:
         """Get the appropriate template type for a competency"""
-        return ERB_COMPETENCY_MAPPING.get(section_code, "problem_solving")
+        return ERB_COMPETENCY_MAPPING.get(section_code)
 
     def get_enhanced_feedback(self, text: str, section_code: str, section_data: dict, profession: str) -> str:
         """Get enhanced AI feedback using specialized templates"""
@@ -514,7 +392,7 @@ class AdvancedAIService:
                     {"role": "user", "content": prompt},
                 ],
                 temperature=0.3,
-                max_tokens=2000,
+                max_tokens=3000,
                 timeout=45,
             )
 
@@ -533,59 +411,56 @@ class AdvancedAIService:
             return f"⚠️ Unexpected error: {str(e)}"
 
     def get_comprehensive_report_feedback(self, responses: dict, competency_data: dict, profession: str) -> str:
-        """Get comprehensive feedback on the entire report"""
-        compiled_report = self._compile_full_report(responses, competency_data)
+        """Get summary-level comprehensive feedback optimized for token limits"""
+        compiled_summary = self._compile_summary_report(responses, competency_data, profession)
 
-        prompt = f"""
-        You are an ERB assessment expert providing comprehensive feedback on a full engineering report.
+        prompt = f"""**ERB REPORT STRATEGIC ASSESSMENT**
 
-        **Professional Level:** {profession}
-        **Report Structure:** Organized by ERB competency framework
-        **Total Competencies Completed:** {len(responses)}
+    **Professional Category:** {profession}
+    **Report Summary Analysis:**
 
-        **FULL REPORT CONTENT:**
-        {compiled_report}
+    {compiled_summary}
 
-        **Provide comprehensive feedback covering:**
+    **As an experienced ERB assessor, provide strategic feedback focusing on:**
 
-        1. **OVERALL ASSESSMENT**
-           - Overall strength and completeness
-           - Alignment with {profession} level expectations
-           - Professional communication quality
+    **1. OVERALL SUBMISSION READINESS**
+    - Based on completion rates and quality indicators, how ready is this report for ERB submission?
+    - What is the overall strength and professionalism demonstrated?
 
-        2. **TECHNICAL DEPTH ANALYSIS**
-           - Engineering methodology demonstrated
-           - Technical accuracy and detail
-           - Problem-solving approach
+    **2. COMPETENCY BALANCE ASSESSMENT**
+    - How well balanced are the technical (A/B) vs professional (C/D/E) competencies?
+    - Are there any critical gaps in series coverage?
+    - Does the distribution match {profession} level expectations?
 
-        3. **COMPETENCY COVERAGE**
-           - Key strengths across competencies
-           - Gaps or underdeveloped areas
-           - Balance between technical and professional competencies
+    **3. QUALITY PATTERN ANALYSIS**
+    - What patterns do you see in response quality based on the metrics?
+    - Are there consistent strengths or weaknesses across the report?
+    - How strong is the evidence of engineering rigor and professional standards?
 
-        4. **ERB ALIGNMENT**
-           - Evidence meeting competency indicators
-           - Professional engineering standards
-           - Readiness for ERB submission
+    **4. STRATEGIC IMPROVEMENT PRIORITIES**
+    - Based on the summary data, what are the 3-5 highest impact improvements needed?
+    - Should the focus be on completion, quality enhancement, or specific competency areas?
+    - What quick wins would most improve ERB readiness?
 
-        5. **ACTIONABLE RECOMMENDATIONS**
-           - Priority improvements
-           - Specific competency enhancements
-           - Final polishing suggestions
+    **5. SUBMISSION TIMELINE GUIDANCE**
+    - Is this report close to submission ready, or does it need significant work?
+    - What would be a realistic timeline for ERB submission preparation?
 
-        Format your response with clear sections and bullet points for readability.
-        """
+    **Provide concise, actionable strategic guidance. Suggest improvements for objectivity, clarity, 
+    and professionalism. Make sure the tone is factual, technical, and engineering-oriented.Highlight 
+    if it is missing any of the core indicators.Focus on patterns and priorities rather than detailed 
+    line-by-line analysis.**"""
 
         try:
             response = self.client.chat.completions.create(
                 model="gpt-4",
                 messages=[
                     {"role": "system",
-                     "content": "You are an experienced ERB assessor providing detailed, constructive feedback on engineering competency reports."},
+                     "content": "You are a senior ERB assessor. Provide high-level strategic feedback on engineering competency reports. Focus on overall readiness, competency balance, and priority improvements. Be concise and actionable."},
                     {"role": "user", "content": prompt},
                 ],
-                temperature=0.4,
-                max_tokens=3000,
+                temperature=0.2,
+                max_tokens=1500,  # Reduced since we're doing summary analysis
                 timeout=60,
             )
 
@@ -597,46 +472,275 @@ class AdvancedAIService:
         except Exception as e:
             return f"⚠️ Error generating comprehensive feedback: {str(e)}"
 
+
+    def _compile_summary_report(self, responses: dict, competency_data: dict, profession: str) -> str:
+        """Compile metrics summary for comprehensive analysis"""
+        if not responses or not isinstance(responses, dict):
+            return "No competency responses available for analysis."
+
+        # Initialize metrics tracking
+        metrics = {
+            'total_competencies': 0,
+            'completed_competencies': 0,
+            'series_counts': {"A": 0, "B": 0, "C": 0, "D": 0, "E": 0, "F": 0},
+            'series_completed': {"A": 0, "B": 0, "C": 0, "D": 0, "E": 0, "F": 0},
+            'total_word_count': 0,
+            'quality_indicators': {
+                'has_technical_terms': 0,
+                'has_measurements': 0,
+                'has_methodology': 0,
+                'has_outcomes': 0,
+                'good_length': 0
+            },
+            'word_count_ranges': {'0-100': 0, '101-300': 0, '301-500': 0, '500+': 0}
+        }
+
+        # Analyze each competency
+        for key, response_data in responses.items():
+            if key == '_status':
+                continue
+
+            try:
+                # Extract response data
+                response_text = ""
+                word_count = 0
+
+                if isinstance(response_data, dict):
+                    response_text = response_data.get('response', '').strip()
+                    word_count = len(response_text.split())
+                elif isinstance(response_data, str):
+                    response_text = response_data.strip()
+                    word_count = len(response_text.split())
+
+                if not response_text:
+                    continue
+
+                # Track competency completion
+                metrics['total_competencies'] += 1
+                if word_count >= 50:  # Minimum meaningful response
+                    metrics['completed_competencies'] += 1
+
+                # Track series distribution
+                series = key[0] if key and key[0] in metrics['series_counts'] else None
+                if series:
+                    metrics['series_counts'][series] += 1
+                    if word_count >= 50:
+                        metrics['series_completed'][series] += 1
+
+                # Track word count
+                metrics['total_word_count'] += word_count
+
+                # Track word count ranges
+                if word_count <= 100:
+                    metrics['word_count_ranges']['0-100'] += 1
+                elif word_count <= 300:
+                    metrics['word_count_ranges']['101-300'] += 1
+                elif word_count <= 500:
+                    metrics['word_count_ranges']['301-500'] += 1
+                else:
+                    metrics['word_count_ranges']['500+'] += 1
+
+                # Analyze quality indicators (for substantial responses only)
+                if word_count >= 100:
+                    text_lower = response_text.lower()
+                    if any(term in text_lower for term in ['analysis', 'method', 'approach', 'process']):
+                        metrics['quality_indicators']['has_methodology'] += 1
+                    if any(term in text_lower for term in ['result', 'outcome', 'achieved', 'improved']):
+                        metrics['quality_indicators']['has_outcomes'] += 1
+                    if any(term in text_lower for term in ['%', 'metric', 'measure', 'data', 'calculated']):
+                        metrics['quality_indicators']['has_measurements'] += 1
+                    if any(term in text_lower for term in ['technical', 'engineering', 'design', 'system']):
+                        metrics['quality_indicators']['has_technical_terms'] += 1
+                    if word_count >= 200:
+                        metrics['quality_indicators']['good_length'] += 1
+
+            except Exception:
+                continue
+
+        return self._format_summary_report(metrics, profession)
+
+    def _format_summary_report(self, metrics: dict, profession: str) -> str:
+        """Format metrics into analysis-ready summary"""
+        if metrics['total_competencies'] == 0:
+            return "No competencies available for analysis."
+
+        completion_rate = (metrics['completed_competencies'] / metrics['total_competencies'] * 100)
+        avg_word_count = metrics['total_word_count'] / metrics['completed_competencies'] if metrics[
+                                                                                                'completed_competencies'] > 0 else 0
+
+        summary = f"""
+    **ERB REPORT SUMMARY - {profession.upper()}**
+
+    **COMPLETION OVERVIEW:**
+    - Total Competencies: {metrics['total_competencies']}
+    - Completed Responses: {metrics['completed_competencies']} ({completion_rate:.1f}%)
+    - Average Response Length: {avg_word_count:.0f} words
+    - Total Word Count: {metrics['total_word_count']}
+
+    **SERIES DISTRIBUTION (Completed/Total):**
+    """
+
+        # Add series breakdown
+        for series in ["A", "B", "C", "D", "E", "F"]:
+            if metrics['series_counts'][series] > 0:
+                completed = metrics['series_completed'][series]
+                total = metrics['series_counts'][series]
+                completion_pct = (completed / total * 100) if total > 0 else 0
+                series_type = "Technical" if series in ["A", "B"] else "Professional"
+                summary += f"- Series {series} ({series_type}): {completed}/{total} ({completion_pct:.1f}%)\n"
+
+        summary += f"""
+    **RESPONSE LENGTH DISTRIBUTION:**
+    - Brief (0-100 words): {metrics['word_count_ranges']['0-100']}
+    - Moderate (101-300 words): {metrics['word_count_ranges']['101-300']}  
+    - Comprehensive (301-500 words): {metrics['word_count_ranges']['301-500']}
+    - Extensive (500+ words): {metrics['word_count_ranges']['500+']}
+
+    **QUALITY INDICATORS (Substantial Responses Only):**
+    - Technical Terminology: {metrics['quality_indicators']['has_technical_terms']}
+    - Engineering Methodology: {metrics['quality_indicators']['has_methodology']}
+    - Measurable Outcomes: {metrics['quality_indicators']['has_outcomes']}
+    - Performance Metrics: {metrics['quality_indicators']['has_measurements']}
+    - Good Length (200+ words): {metrics['quality_indicators']['good_length']}
+    """
+
+        return summary
+
+
+
+    def _compile_erb_optimized_report(self, responses: dict, competency_data: dict, profession: str) -> str:
+        """ERB-optimized report compilation focusing on assessment quality"""
+        if not responses or not isinstance(responses, dict):
+            return "No completed competencies available for assessment."
+
+        report_parts = []
+        competency_series = {"A": 0, "B": 0, "C": 0, "D": 0, "E": 0, "F": 0}
+
+        for key, response_data in responses.items():
+            if key == '_status':
+                continue
+
+            try:
+                # Extract response text safely
+                response_text = ""
+                word_count = 0
+
+                if isinstance(response_data, dict):
+                    response_text = response_data.get('response', '').strip()
+                    word_count = response_data.get('word_count', 0) or len(response_text.split())
+                elif isinstance(response_data, str):
+                    response_text = response_data.strip()
+                    word_count = len(response_text.split())
+
+                if not response_text or word_count < 50:  # Minimum meaningful content
+                    continue
+
+                # Get competency details
+                title = "Unknown Competency"
+                indicators = []
+
+                if key in competency_data and isinstance(competency_data[key], dict):
+                    title = competency_data[key].get('title', 'Unknown Competency')
+                    indicators = competency_data[key].get('indicators', [])
+
+                # Track competency series distribution
+                series = key[0] if key and key[0] in competency_series else "Other"
+                if series in competency_series:
+                    competency_series[series] += 1
+
+                # ERB-optimized formatting
+                report_parts.append(f"""
+    **{key}: {title}**
+    Indicators: {', '.join(indicators) if indicators else 'Not specified'}
+    Word Count: {word_count}
+    Content: {response_text}
+    ───────────────────────────────""")
+
+            except Exception as e:
+                print(f"Warning: Could not compile competency {key}: {e}")
+                continue
+
+        # Add competency distribution summary
+        if report_parts:
+            distribution_summary = "\n**COMPETENCY DISTRIBUTION SUMMARY:**\n"
+            for series, count in competency_series.items():
+                if count > 0:
+                    distribution_summary += f"- Series {series}: {count} competencies\n"
+
+            report_parts.insert(0, distribution_summary)
+            report_parts.insert(0, f"**ERB REPORT ANALYSIS - {profession.upper()}**")
+            report_parts.insert(1, f"**Total Meaningful Competencies:** {len(report_parts) - 3}")
+        else:
+            return "No substantial competency responses found for comprehensive analysis."
+
+        return "\n".join(report_parts)
+
+
     def generate_competency_template(self, section_code: str, section_data: dict, profession: str,
                                      style: str = "Professional", include_examples: bool = True) -> str:
-        """Generate a template response for a competency with customization options"""
-        prompt = f"""
-        Generate a {style.lower()} template response for an ERB competency submission.
+        """Generate an ERB-optimized template response for a competency"""
+        prompt = f"""**ERB COMPETENCY TEMPLATE GENERATION**
 
-        **Competency:** {section_code} - {section_data['title']}
-        **Professional Level:** {profession}
-        **Style Preference:** {style}
-        **Include Examples:** {include_examples}
-        **Instructions:** {section_data['instructions']}
-        **Key Indicators:** {', '.join(section_data.get('indicators', []))}
-        **Target Word Count:** {section_data.get('word_limit', 500)}
+    **Competency:** {section_code} - {section_data['title']}
+    **Professional Level:** {profession}
+    **Template Style:** {style}
+    **Include Realistic Examples:** {include_examples}
+    **Key Indicators to Address:** {', '.join(section_data.get('indicators', []))}
+    **Target Word Count:** {section_data.get('word_limit', 500)}
+    **Competency Instructions:** {section_data['instructions']}
 
-        Create a template that:
-        1. Demonstrates engineering best practices in {style.lower()} style
-        2. Addresses all competency indicators
-        3. Uses professional engineering language appropriate for {profession}
-        4. Includes {'detailed examples and ' if include_examples else ''}placeholders for specific projects/experiences
-        5. Shows appropriate technical depth for {profession} level
-        6. Is structured for easy customization
+    **Generate an ERB-optimized template that demonstrates:**
 
-        Format as a ready-to-customize template with [BRACKETED_PLACEHOLDERS] for user-specific details.
-        Provide clear section headings and practical guidance.
-        """
+    **1. ERB PROFESSIONAL STRUCTURE**
+    - Use first-person professional narrative throughout
+    - Follow ERB example format with clear example headings
+    - Include specific dates, locations, and equipment references
+    - Maintain professional engineering tone for {profession} level
+
+    **2. TECHNICAL DEPTH & EVIDENCE**
+    - Demonstrate engineering methodologies (FMEA, RCA, risk assessment, etc.)
+    - Include measurable outcomes and performance metrics
+    - Show technical specifications and calculations where appropriate
+    - Reference relevant standards (ISO, safety protocols, etc.)
+
+    **3. COMPETENCY INDICATOR ALIGNMENT**
+    - Clearly address each indicator: {', '.join(section_data.get('indicators', []))}
+    - Show progression from problem identification to solution implementation
+    - Demonstrate professional responsibility and decision-making
+
+    **4. PRACTICAL CUSTOMIZATION GUIDANCE**
+    - Use [BRACKETED_PLACEHOLDERS] for project-specific details
+    - Provide clear sections for easy user modification
+    - Include guidance on what details to customize
+
+    {'**5. REALISTIC ERB EXAMPLES**' if include_examples else ''}
+    {'• Include 2 concrete examples following ERB report structure' if include_examples else ''}
+    {'• Each example should have specific technical context and outcomes' if include_examples else ''}
+    {'• Examples should demonstrate different scenarios/situations' if include_examples else ''}
+
+    **Format the template to be immediately usable for ERB submission preparation.**"""
 
         try:
             response = self.client.chat.completions.create(
                 model="gpt-4",
                 messages=[
                     {"role": "system",
-                     "content": f"You are an engineering expert creating high-quality ERB competency templates in {style.lower()} style."},
+                     "content": f"""You are an ERB preparation expert creating professional competency templates. 
+                     Create templates that mirror real ERB submission style with:
+                     - First-person professional narrative
+                     - Specific technical details and dates
+                     - Measurable engineering outcomes
+                     - Professional structure and formatting
+                     - Clear placeholders for easy customization
+                     Style: {style.lower()}"""},
                     {"role": "user", "content": prompt},
                 ],
-                temperature=0.7,
-                max_tokens=1500,
+                temperature=0.5,  # Balanced for consistency with some creativity
+                max_tokens=1800,  # Increased for comprehensive templates
             )
 
             template = self._safe_content(response)
-            self._store_feedback_history(section_code, f"Generated {style} template")
+            self._store_feedback_history(section_code, f"Generated ERB {style} template")
             self.update_usage_stats("template")
             return template
 
@@ -644,89 +748,111 @@ class AdvancedAIService:
             return f"⚠️ Error generating template: {str(e)}"
 
     def analyze_competency_gaps(self, responses, competency_data, profession):
-        """Simple safe gap analysis"""
+        """Enhanced gap analysis using summary metrics"""
         try:
-            # Convert inputs to safe types
-            safe_responses = responses if hasattr(responses, 'items') else {}
-            safe_competency_data = competency_data if hasattr(competency_data, 'items') else {}
-            safe_profession = str(profession) if profession else "Engineering Professional"
+            # Use our new summary compilation for consistent analysis
+            compiled_summary = self._compile_summary_report(responses, competency_data, profession)
 
-            # Count completed competencies
-            completed = []
-            if hasattr(safe_responses, 'items'):
-                for key, data in safe_responses.items():
-                    try:
-                        response_text = ""
-                        if isinstance(data, dict) and 'response' in data:
-                            response_text = str(data['response'])
-                        elif isinstance(data, str):
-                            response_text = data
+            prompt = f"""**ERB GAP ANALYSIS REQUEST**
 
-                        if response_text.strip():
-                            completed.append(key)
-                    except:
-                        continue
+    **Professional Role:** {profession}
+    **Report Summary:** {compiled_summary}
 
-            all_competencies = list(safe_competency_data.keys()) if hasattr(safe_competency_data, 'keys') else []
-            missing = [c for c in all_competencies if c not in completed]
-            completion_rate = (len(completed) / len(all_competencies) * 100) if all_competencies else 0
+    **Identify critical gaps and provide strategic recommendations for ERB submission preparation.**"""
 
-            # Generate simple analysis
-            return f"""
-    **Gap Analysis for {safe_profession}**
+            response = self.client.chat.completions.create(
+                model="gpt-4",
+                messages=[
+                    {"role": "system",
+                     "content": "You are an ERB preparation expert. Analyze competency gaps and provide strategic recommendations for improvement."},
+                    {"role": "user", "content": prompt},
+                ],
+                temperature=0.2,
+                max_tokens=1200,
+            )
 
-    **Completion:** {len(completed)}/{len(all_competencies)} ({completion_rate:.1f}%)
-    **Remaining:** {len(missing)} competencies
-
-    **Recommendations:**
-    - Focus on completing remaining competencies
-    - Use templates for quick starts
-    - Prioritize role-specific competencies
-    """
+            analysis = self._safe_content(response)
+            return analysis
 
         except Exception as e:
             return f"Basic gap analysis: Error processing data - {str(e)}"
+
+
+
     def improve_response_quality(self, text: str, section_code: str, section_data: dict, profession: str) -> str:
-        """Provide specific improvements for a response with enhanced formatting"""
-        prompt = f"""
-        Improve this engineering competency response for ERB submission:
+        """Provide ERB-optimized improvements for a competency response"""
+        prompt = f"""**ERB RESPONSE QUALITY ENHANCEMENT**
 
-        **Competency:** {section_code} - {section_data['title']}
-        **Professional Level:** {profession}
-        **Current Response:** {text}
+    **Competency:** {section_code} - {section_data['title']}
+    **Professional Level:** {profession}
+    **Key Indicators:** {', '.join(section_data.get('indicators', []))}
+    **Target Word Count:** {section_data.get('word_limit', 500)}
 
-        **Provide an improved version with these enhancements:**
-        1. **Technical Depth** - Add specific engineering details, calculations, methodologies
-        2. **Evidence Strength** - Strengthen examples and measurable outcomes
-        3. **Professional Language** - Use appropriate engineering terminology for {profession}
-        4. **Structure & Clarity** - Improve organization and readability
-        5. **Competency Alignment** - Better address indicators: {', '.join(section_data.get('indicators', []))}
+    **Current Response:**
+    {text}
 
-        **Format your response as:**
+    **Transform this response into an ERB-ready submission by enhancing:**
 
-        **Improvement Analysis:**
-        [Brief explanation of key improvements made and why they matter for ERB assessment]
+    **1. ERB PROFESSIONAL STRUCTURE**
+    - Convert to first-person professional narrative
+    - Use ERB example format with clear example headings
+    - Add specific dates, locations, and equipment references
+    - Maintain professional engineering tone for {profession} level
 
-        **Improved Response:**
-        [The complete enhanced response ready for use]
+    **2. TECHNICAL DEPTH & ENGINEERING RIGOR**
+    - Incorporate engineering methodologies (FMEA, RCA, risk assessment, weighted matrices)
+    - Add specific technical specifications and measurements
+    - Include calculations, performance metrics, and quantifiable results
+    - Reference relevant standards (ISO, safety protocols, regulatory requirements)
 
-        Maintain the original experiences and intent while significantly elevating professional quality.
-        """
+    **3. EVIDENCE-BASED OUTCOMES**
+    - Strengthen with measurable before/after comparisons
+    - Add specific performance metrics and business impact
+    - Demonstrate strategic alignment (e.g., Maduo 2026, corporate objectives)
+    - Show cost-benefit analysis where appropriate
+
+    **4. COMPETENCY INDICATOR ALIGNMENT**
+    - Ensure clear demonstration of: {', '.join(section_data.get('indicators', []))}
+    - Show professional responsibility and decision-making
+    - Demonstrate progressive problem-solving approach
+
+    **5. PROFESSIONAL COMMUNICATION**
+    - Enhance clarity and professional tone
+    - Improve logical flow and structure
+    - Use appropriate engineering terminology
+    - Ensure readability for ERB assessors
+
+    **Format your response as:**
+
+    **Improvement Analysis:**
+    [Specific enhancements made and their importance for ERB assessment. Focus on technical depth, evidence quality, and professional standards.]
+
+    **Improved Response:**
+    [Complete ERB-ready response following professional format with 2 concrete examples, specific technical details, measurable outcomes, and first-person narrative. Maintain original experiences while elevating to ERB standards.]
+
+    Ensure the improved response stays within approximately {section_data.get('word_limit', 500)} words and is immediately usable for ERB submission."""
 
         try:
             response = self.client.chat.completions.create(
                 model="gpt-4",
                 messages=[
                     {"role": "system",
-                     "content": "You are an engineering editor specializing in ERB submissions. Enhance responses while preserving authenticity and adding professional rigor."},
+                     "content": """You are an ERB submission specialist and engineering editor. Your expertise is transforming basic responses into professional ERB-ready submissions. You excel at:
+    - Converting responses to first-person professional ERB narrative style
+    - Adding specific technical details, dates, and measurable outcomes
+    - Incorporating engineering methodologies and standards references
+    - Enhancing evidence quality with quantifiable results
+    - Maintaining authenticity while elevating professional rigor
+    - Structuring responses with clear example formats
+    Focus on creating submissions that would impress ERB assessors with their technical depth and professional quality."""},
                     {"role": "user", "content": prompt},
                 ],
-                temperature=0.4,
-                max_tokens=2000,
+                temperature=0.3,  # Consistent for quality improvements
+                max_tokens=2500,  # Increased for comprehensive enhancements
             )
 
             improved = self._safe_content(response)
-            self._store_feedback_history(section_code, "Response quality improvement applied")
+            self._store_feedback_history(section_code, "ERB response quality improvement applied")
             self.update_usage_stats("quality_improvement")
             return improved
 
@@ -734,51 +860,113 @@ class AdvancedAIService:
             return f"⚠️ Error improving response: {str(e)}"
 
     def _compile_full_report(self, responses: dict, competency_data: dict) -> str:
-        """Compile full report for analysis with safe data access"""
+        """Compile ERB-optimized full report for comprehensive analysis"""
         report_parts = []
 
         if not responses or not isinstance(responses, dict):
-            return "No responses available."
+            return "No competency responses available for analysis."
+
+        # Track competency series distribution for analysis
+        series_counts = {"A": 0, "B": 0, "C": 0, "D": 0, "E": 0, "F": 0}
+        total_word_count = 0
+        completed_competencies = 0
 
         for key, response_data in responses.items():
-            try:
-                # Safely get competency data
-                competency = None
-                if key in competency_data:
-                    competency = competency_data[key]
+            if key == '_status':
+                continue
 
-                # Safely extract response text
+            try:
+                # Safely extract response text and metadata
                 response_text = ""
+                word_count = 0
+
                 if isinstance(response_data, dict):
-                    response_text = response_data.get('response', 'No response')
+                    response_text = response_data.get('response', '').strip()
+                    word_count = response_data.get('word_count', 0) or len(response_text.split())
                 elif isinstance(response_data, str):
-                    response_text = response_data
+                    response_text = response_data.strip()
+                    word_count = len(response_text.split())
                 else:
                     response_text = str(response_data)
+                    word_count = len(response_text.split())
 
-                # Safely get competency title
-                title = "Unknown Title"
-                if isinstance(competency, dict):
-                    title = competency.get('title', 'Unknown Title')
-                elif competency:
-                    title = str(competency)
+                # Skip empty or very short responses
+                if not response_text or word_count < 50:
+                    continue
 
-                # Safely get indicators
+                # Get competency details
+                title = "Unknown Competency"
                 indicators = []
-                if isinstance(competency, dict):
-                    indicators = competency.get('indicators', [])
+                instructions = ""
 
+                if key in competency_data and isinstance(competency_data[key], dict):
+                    competency = competency_data[key]
+                    title = competency.get('title', 'Unknown Competency')
+                    indicators = competency.get('indicators', [])
+                    instructions = competency.get('instructions', '')
+
+                # Track series distribution
+                series = key[0] if key and key[0] in series_counts else "Other"
+                if series in series_counts:
+                    series_counts[series] += 1
+
+                total_word_count += word_count
+                completed_competencies += 1
+
+                # ERB-optimized formatting for better AI analysis
                 report_parts.append(f"""
-    COMPETENCY {key}: {title}
-    Indicators: {', '.join(indicators) if indicators else 'No indicators'}
-    Response: {response_text}
-    {'=' * 50}
+    **{key}: {title}**
+
+    *Competency Indicators:* {', '.join(indicators) if indicators else 'Not specified'}
+    *Word Count:* {word_count}
+    *Response Content:*
+
+    {response_text}
+
+    {'─' * 80}
     """)
+
             except Exception as e:
                 print(f"Warning: Could not compile report for competency {key}: {e}")
                 continue
 
-        return "\n".join(report_parts)
+        # Add comprehensive report header with metadata
+        if report_parts:
+            # Calculate series percentages
+            series_analysis = ""
+            for series in ["A", "B", "C", "D", "E", "F"]:
+                if series_counts[series] > 0:
+                    series_analysis += f"- Section {series}: {series_counts[series]} competencies\n"
+
+            header = f"""
+    **ERB COMPETENCY REPORT - COMPREHENSIVE ANALYSIS**
+
+    **Report Overview:**
+    - Total Competencies Completed: {completed_competencies}
+    - Total Word Count: {total_word_count}
+    - Average Response Length: {total_word_count // completed_competencies if completed_competencies else 0} words
+
+    **Competency Distribution:**
+    {series_analysis}
+
+    **Detailed Competency Responses:**
+    ────────────────────────────────────────────────────────────────────────────────
+    """
+            report_parts.insert(0, header)
+
+            # Add footer with analysis context
+            footer = f"""
+    **END OF REPORT**
+    Total meaningful competencies analyzed: {completed_competencies}
+    Report compiled for ERB assessment preparation.
+    """
+            report_parts.append(footer)
+
+            return "\n".join(report_parts)
+        else:
+            return "No substantial competency responses found for comprehensive analysis."
+
+
     def _store_feedback_history(self, section: str, feedback: str):
         """Store feedback in history with state manager persistence"""
         self.feedback_history.append({

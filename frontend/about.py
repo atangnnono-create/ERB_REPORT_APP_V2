@@ -205,10 +205,10 @@ def show():
         st.markdown("""
         <div class="developer-card">
             <div class="icon-large">⚡</div>
-            <h3 style='color: white; margin-bottom: 0.5rem;'>Lefa Molokwe</h3>
-            <p style='color: white; margin-bottom: 0.5rem; font-weight: 600;'>Pr.Eng 20180649</p>
+            <h3 style='color: white; margin-bottom: 0.5rem;'>TurtleTEC Solutions Africa</h3>
+            <p style='color: white; margin-bottom: 0.5rem; font-weight: 600;'>Digital Solutions For:</p>
             <p style='color: rgba(255,255,255,0.9); margin-bottom: 1rem;'>
-                Electrical Engineer | Software Developer
+                Education | Engineering | Microfinance | Hospitality
             </p>
             <div style='background: rgba(255,255,255,0.1); padding: 1rem; border-radius: 8px;'>
                 <p style='margin: 0.25rem 0; color: white;'>📱 Cell: +267 7144 1429</p>
@@ -220,18 +220,15 @@ def show():
     with col2:
         st.markdown("""
         <div style='background: white; padding: 2rem; border-radius: 15px; border-left: 4px solid #1f3a60;'>
-            <h4 style='color: #1f3a60; margin-bottom: 1rem;'>About the Creator</h4>
+            <h4 style='color: #1f3a60; margin-bottom: 1rem;'>About TurtleTEC Solutions Africa</h4>
             <p style='color: #666; line-height: 1.6; margin-bottom: 1rem;'>
-                <strong>Lefa Molokwe</strong> is a registered Professional Electrical Engineer with a passion for 
-                combining engineering practice with software innovation. With extensive experience in 
-                both electrical engineering and software development, he identified the need for 
-                streamlined engineering reporting tools in the industry.
+                <strong>turtleTEC Solutions Africa</strong>  drives digital transformation across key sectors. 
+                We specialize in innovative digital solutions for Education technology platforms, Engineering
+                 automation systems, Microfinance digital banking, and Hospitality management solutions.
             </p>
             <p style='color: #666; line-height: 1.6;'>
-                This application represents the intersection of engineering expertise and modern 
-                software development, designed specifically to address the challenges faced by 
-                engineering professionals in their registration and continuous professional 
-                development journeys.
+               Our mission is to empower African businesses and institutions with cutting-edge technology 
+               that enhances efficiency, accessibility, and growth across these vital industries.
             </p>
             <div style='margin-top: 1.5rem; padding: 1rem; background: #f8f9fa; border-radius: 8px;'>
                 <p style='margin: 0; color: #1f3a60; font-style: italic;'>
@@ -370,17 +367,17 @@ def show():
             else:
                 st.warning("⚠️ Google services limited")
 
-    # Footer
     st.markdown("""
-    <div style='text-align: center; margin-top: 3rem; padding: 2rem; background: #f8f9fa; border-radius: 10px;'>
-        <p style='color: #666; margin: 0;'>
-            <strong>Engineering Report Deck</strong> • Built with ❤️ for the Engineering Community
-        </p>
-        <p style='color: #888; font-size: 0.9rem; margin: 0.5rem 0 0 0;'>
-            Version 2.0 • Tsodilo Edition • Professional Engineering Reporting Solution
-        </p>
-    </div>
-    """, unsafe_allow_html=True)
+             <div style='text-align: center; margin-top: 3rem; padding: 2rem; background: #f8f9fa; border-radius: 10px;'>
+                 <p style='color: #666; margin: 0;'>
+                     <strong>Engineering Report Deck</strong> • Confidence with Clarity
+                 </p>
+                 <p style='color: #888; font-size: 0.9rem; margin: 0.5rem 0 0 0;'>
+                     TurtleTEC Solutions Africa
+                     © 2025. ALL RIGHTS RESERVED.
+                 </p>
+             </div>
+             """, unsafe_allow_html=True)
 
 
 def check_system_status():

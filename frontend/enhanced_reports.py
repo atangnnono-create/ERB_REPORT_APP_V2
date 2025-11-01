@@ -63,6 +63,18 @@ def enhanced_reports_ui(api: EnhancedAPIClient):
     else:
         st.warning("Feedback features are currently unavailable")
 
+    st.markdown("""
+          <div style='text-align: center; margin-top: 3rem; padding: 2rem; background: #f8f9fa; border-radius: 10px;'>
+              <p style='color: #666; margin: 0;'>
+                  <strong>Engineering Report Deck</strong> • Confidence with Clarity
+              </p>
+              <p style='color: #888; font-size: 0.9rem; margin: 0.5rem 0 0 0;'>
+                  TurtleTEC Solutions Africa
+                  © 2025. ALL RIGHTS RESERVED.
+              </p>
+          </div>
+          """, unsafe_allow_html=True)
+
 
 
 def show_my_reports(api: EnhancedAPIClient):
@@ -915,6 +927,11 @@ def format_date(date_str: str) -> str:
         return dt.strftime("%Y-%m-%d %H:%M")
     except:
         return date_str
+
+    # Footer
+
+
+
 
 
 def main():
