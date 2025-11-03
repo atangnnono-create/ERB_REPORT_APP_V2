@@ -87,7 +87,7 @@ def show_smart_templates(competency_sections: dict, profession: str):
 
             indicators = section_data.get('indicators', [])
             if indicators:
-                st.write("**Key Indicators:**")
+                st.write("**Key Success Indicators:**")
                 for indicator in indicators:
                     st.write(f"• {indicator}")
 
@@ -273,7 +273,7 @@ def show_gap_analysis(current_responses: dict, competency_sections: dict, profes
                     **Priority: Final Polish**
                     • Review all responses for ERB standards compliance
                     • Ensure measurable outcomes in every example
-                    • Validate competency indicator alignment
+                    • Validate competency success indicators alignment
                     • Consider peer review before submission
                     """)
             else:
@@ -291,7 +291,7 @@ def show_quality_improver(competency_sections: dict, profession: str, current_re
     • Specific technical details and dates  
     • Measurable outcomes and performance metrics
     • Engineering methodology demonstration
-    • Clear competency indicator alignment
+    • Clear competency success indicators alignment
     """)
 
     # Only show competencies that have responses
@@ -328,7 +328,7 @@ def show_quality_improver(competency_sections: dict, profession: str, current_re
             indicator_coverage = "Partial"
             if any(indicator.lower() in current_response.lower() for indicator in erb_indicators):
                 indicator_coverage = "Good"
-            st.metric("Indicator Coverage", indicator_coverage)
+            st.metric("Success Indicators Coverage", indicator_coverage)
 
         with col3:
             # Technical depth assessment

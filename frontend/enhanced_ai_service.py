@@ -30,13 +30,13 @@ AI_TEMPLATES = {
 {text}
 
 **Improved Response Example:**
-[Provide a complete ERB-style rewritten version using first-person professional narrative.
-Suggest improvements for objectivity, clarity, and professionalism. Make sure the tone is factual, 
-technical, and engineering-oriented.Highlight if it is missing any of the core indicators.
- Include: specific date/location (e.g., "On 23 February 2025 at Morupule A Power Station"), 
- equipment names, technical measurements, engineering methodology (FMEA, RCA, etc.), measurable 
+[Provide a complete rewritten version using first-person professional engineering narrative.
+Include improvements for objectivity, clarity, and professionalism. Make sure your tone is factual, 
+technical, and engineering-oriented fit for an executive engineering audience.In your version include any 
+core success indicators that the users response did not cover.Include: specific date/location (e.g., "On 23 February 2025 at
+Morupule A Power Station"), equipment names, technical measurements, engineering methodology (FMEA, RCA, etc.), measurable 
  outcomes, and strategic alignment. Maintain user's core experiences while enhancing to ERB standards. 
- Stay within {word_limit} words and ensure it reads like a real ERB submission.].
+ Stay within {word_limit} words and ensure it reads like a real ERB submission.]
 **ERB Alignment Score:** X/10"""
     },
 
@@ -50,12 +50,14 @@ technical, and engineering-oriented.Highlight if it is missing any of the core i
 
 
 **Improved Design Response:**
-[Rewritten design response in ERB style. Include: specific design parameters, 
-material selection justification (e.g., "stainless-steel alloy for acid resistance"), 
+[Provide a complete rewritten version using first-person professional engineering narrative.
+ Include: specific design parameters, material selection justification (e.g., "stainless-steel alloy for acid resistance"), 
 technical calculations, performance validation metrics, risk assessment, and cost-benefit 
-analysis. Demonstrate engineering decision-making process. Suggest improvements for objectivity, 
-clarity, and professionalism. Make sure the tone is factual, technical, and engineering-oriented.
-Highlight if it is missing any of the core indicators. Address: {indicators}]"""
+analysis. Demonstrate engineering decision-making process. Include improvements for objectivity, 
+clarity, and professionalism. Make sure your tone is factual, technical, and engineering-oriented 
+fit fo+r an executive engineering audience.In your version include any core success indicators that the 
+users response did not cover. Address these report success indicators: {indicators}]
+**ERB Alignment Score:** X/10"""
     },
 
     "leadership_management": {
@@ -68,12 +70,14 @@ Highlight if it is missing any of the core indicators. Address: {indicators}]"""
 {text}
 
 **Improved Leadership Response:**
-[Rewritten leadership response in ERB professional style. Include: specific 
+[Provide a complete rewritten version using first-person professional engineering narrative. Include: specific 
 leadership actions (e.g., "convened stakeholder planning meeting"), team coordination 
 methods, stakeholder engagement details, measurable project outcomes, and leadership impact
- demonstration. Suggest improvements for objectivity, clarity, and professionalism. Make sure the tone is factual, 
-technical, and engineering-oriented.Highlight if it is missing any of the core indicators.
-  Use first-person narrative showing personal responsibility. Address: {indicators}]"""
+ demonstration. Include improvements for objectivity, clarity, and professionalism. Make sure your tone is factual, 
+technical, and engineering-oriented fit for an executive engineering audience.In your version include any 
+core success indicators that the users response did not cover. Use first-person narrative showing personal responsibility. 
+Address these report success indicators: {indicators}]
+**ERB Alignment Score:** X/10"""
     },
 
     "continuous_quality_improvement": {
@@ -85,12 +89,13 @@ technical, and engineering-oriented.Highlight if it is missing any of the core i
 {text}
 
 **Improved Quality Response:**
-[Rewritten quality response in ERB style. Include: specific process improvements 
-(e.g., "developed sootblowing process checklist"), measurable quality metrics, 
+[Provide a complete rewritten version using first-person professional engineering narrative. 
+Include: specific process improvements (e.g., "developed sootblowing process checklist"), measurable quality metrics, 
 ISO standard references (ISO 9001, etc.), before/after performance data, and continuous 
-improvement evidence. Suggest improvements for objectivity, clarity, and professionalism. 
-Make sure the tone is factual, technical, and engineering-oriented.Highlight if it is missing 
-any of the core indicators. Address: {indicators}]"""
+improvement evidence. Include improvements for objectivity, clarity, and professionalism. Make sure your tone is factual, 
+technical, and engineering-oriented fit for an executive engineering audience.In your version include any 
+core success indicators that the users response did not cover. Address these report success indicators: {indicators}]
+**ERB Alignment Score:** X/10"""
     },
 
     "effective_communication": {
@@ -110,12 +115,12 @@ any of the core indicators. Address: {indicators}]"""
 ---
 
 **Improved Communication Response:**
-[Rewritten communication response in ERB professional style. Include: specific communication
- examples (e.g., "chaired daily production meetings"), cross-departmental coordination details,
-  technical documentation created, stakeholder engagement methods, and communication outcomes. 
-Suggest improvements for objectivity, clarity, and professionalism. Make sure the tone is factual, 
-technical, and engineering-oriented.Highlight if it is missing any of the core indicators.
-  Address: {indicators}]"""
+[Provide a complete rewritten version using first-person professional engineering narrative. 
+Include: specific communicationexamples (e.g., "chaired daily production meetings"), cross-departmental coordination details,
+technical documentation created, stakeholder engagement methods, and communication outcomes. 
+Include improvements for objectivity, clarity, and professionalism. Make sure your tone is factual, 
+technical, and engineering-oriented fit for an executive engineering audience.In your version include any 
+core success indicators that the users response did not cover.Address these report success indicators: {indicators}]"""
     },
 
     "proposals_and_justifications": {
@@ -135,11 +140,12 @@ technical, and engineering-oriented.Highlight if it is missing any of the core i
 ---
 
 **Improved Proposal Response:**
-[Rewritten proposal response in ERB justification style. Include: specific cost calculations
- (e.g., "P15630 x 40 drums = P625,630"), technical specifications, risk assessment, business 
- case development, strategic alignment, and formal justification format. Suggest improvements 
- for objectivity, clarity, and professionalism. Make sure the tone is factual, technical, and 
- engineering-oriented.Highlight if it is missing any of the core indicators. Address: {indicators}]"""
+[Provide a complete rewritten version using first-person professional engineering narrative.
+ Include: specific cost calculations(e.g., "P15630 x 40 drums = P625,630"), technical specifications, 
+risk assessment, business case development, strategic alignment, and formal justification format. Include improvements
+for objectivity, clarity, and professionalism. Make sure your tone is factual, technical, and 
+engineering-oriented fit for an executive engineering audience.In your version include any 
+core success indicators that the users response did not cover. Address these report success indicators: {indicators}]"""
     },
 
     "diversity_and_inclusion": {
@@ -159,11 +165,12 @@ technical, and engineering-oriented.Highlight if it is missing any of the core i
 ---
 
 **Improved Diversity Response:**
-[Rewritten diversity response in ERB professional style. Include: specific team initiatives
- (e.g., "employee birthday celebrations"), conflict resolution process details, inclusive practices
-  implemented, team collaboration outcomes, and cultural impact. Suggest improvements for objectivity, 
-  clarity, and professionalism. Make sure the tone is factual, technical, and engineering-oriented.
-  Highlight if it is missing any of the core indicators. Address: {indicators}]"""
+[Provide a complete rewritten version using first-person professional engineering narrative.
+Include: specific team initiatives(e.g., "employee birthday celebrations"), conflict resolution 
+process details, inclusive practices implemented, team collaboration outcomes, and cultural impact. 
+Include improvements for objectivity, clarity, and professionalism. Make sure your tone is factual, 
+technical, and engineering-oriented fit for an executive engineering audience.In your version include 
+any core success indicators that the users response did not cover. Address these report success indicators: {indicators}]"""
     },
 
     "codes_of_conduct": {
@@ -183,11 +190,12 @@ technical, and engineering-oriented.Highlight if it is missing any of the core i
 ---
 
 **Improved Ethics Response:**
-[Rewritten ethics response in ERB professional style. Include: specific ethical dilemmas 
+[Provide a complete rewritten version using first-person professional engineering narrative. Include: specific ethical dilemmas 
 (e.g., "refusing to override alarm limits"), compliance actions taken, professional standards 
-referenced, ethical decision-making process, and integrity demonstration. Suggest improvements 
-for objectivity, clarity, and professionalism. Make sure the tone is factual, technical, and 
-engineering-oriented.Highlight if it is missing any of the core indicators. Address: {indicators}]"""
+referenced, ethical decision-making process, and integrity demonstration. Include improvements
+for objectivity, clarity, and professionalism. Make sure your tone is factual, technical, and
+engineering-oriented fit for an executive engineering audience.In your version include any 
+core success indicators that the users response did not cover. Address these report success indicators: {indicators}]"""
     },
 
     "occupational_safety_improvement": {
@@ -207,11 +215,12 @@ engineering-oriented.Highlight if it is missing any of the core indicators. Addr
 ---
 
 **Improved Safety Response:**
-[Rewritten safety response in ERB professional style. Include: specific safety incidents 
+[Provide a complete rewritten version using first-person professional engineering narrative. Include: specific safety incidents 
 (e.g., "lube oil spill containment"), risk assessment methods, emergency response coordination,
- safety system improvements, and regulatory compliance. Suggest improvements for objectivity, 
- clarity, and professionalism. Make sure the tone is factual, technical, and engineering-oriented.
- Highlight if it is missing any of the core indicators.Address: {indicators}]"""
+safety system improvements, and regulatory compliance. Include improvements for objectivity, 
+clarity, and professionalism. Make sure your tone is factual, technical, and engineering-oriented 
+fit for an executive engineering audience.In your version include any core success indicators that the users 
+response did not cover.Address these report success indicators: {indicators}]"""
     },
 
     "sustainable_development_principles": {
@@ -231,11 +240,12 @@ engineering-oriented.Highlight if it is missing any of the core indicators. Addr
 ---
 
 **Improved Sustainability Response:**
-[Rewritten sustainability response in ERB professional style. Include: specific environmental 
+[Provide a complete rewritten version using first-person professional engineering narrative. Include: specific environmental 
 improvements (e.g., "optimized boiler blowdown scheduling"), resource efficiency calculations, 
 sustainable development principles applied, measurable environmental impact reduction, and business benefits. 
-Suggest improvements for objectivity, clarity, and professionalism. Make sure the tone is factual, 
-technical, and engineering-oriented.Highlight if it is missing any of the core indicators.Address: {indicators}]"""
+Include improvements for objectivity, clarity, and professionalism. Make sure your tone is factual, 
+technical, and engineering-oriented fit for an executive engineering audience.In your version include any 
+core success indicators that the users response did not cover.Address these report success indicators: {indicators}]"""
     },
 
     "ethical_issues": {
@@ -255,11 +265,12 @@ technical, and engineering-oriented.Highlight if it is missing any of the core i
 ---
 
 **Improved Ethical Response:**
-[Rewritten ethical response in ERB professional style. Include: specific ethical conflicts 
+[Provide a complete rewritten version using first-person professional engineering narrative. Include: specific ethical conflicts 
 (e.g., "protecting confidential interview information"), decision-making process, professional 
-standards applied, integrity demonstration, and ethical resolution.Suggest improvements for objectivity, 
-clarity, and professionalism. Make sure the tone is factual, technical, and engineering-oriented.
-Highlight if it is missing any of the core indicators. Address: {indicators}]"""
+standards applied, integrity demonstration, and ethical resolution.Include improvements for objectivity, 
+clarity, and professionalism. Make sure your tone is factual,technical, and engineering-oriented fit
+ for an executive engineering audience.In your version include any core success indicators that the users 
+ response did not cover. Address these report success indicators: {indicators}]"""
     },
 
     "continuing_professional_development": {
@@ -279,11 +290,12 @@ Highlight if it is missing any of the core indicators. Address: {indicators}]"""
 ---
 
 **Improved CPD Response:**
-[Rewritten CPD response in ERB professional style. Include: specific development activities, 
-learning outcomes achieved, competency enhancement evidence, professional growth milestones, 
-and future development planning. Suggest improvements for objectivity,clarity,and professionalism.
- Make sure the tone is factual, technical, and engineering-oriented.Highlight if it is missing any 
- of the core indicators. Address: {indicators}]"""
+[Provide a complete rewritten version using first-person professional engineering narrative. 
+Include: specific development activities, learning outcomes achieved, competency enhancement evidence, 
+professional growth milestones, and future development planning. Include improvements for objectivity, 
+clarity, and professionalism. Make sure your tone is factual, technical, and engineering-oriented fit for 
+an executive engineering audience. In your version include any core success indicators that the users response 
+did not cover. Address these report success indicators: {indicators}]"""
     },
 
     "initial_professional_development": {
@@ -303,10 +315,11 @@ and future development planning. Suggest improvements for objectivity,clarity,an
 ---
 
 **Improved IPD Response:**
-[Rewritten IPD response in ERB professional style. Include: specific skill development activities,
+[Provide a complete rewritten version using first-person professional engineering narrative. Include: specific skill development activities,
  knowledge gap analysis, competency foundation building, professional milestones, and ERB alignment planning.
-  Suggest improvements for objectivity, clarity, and professionalism. Make sure the tone is factual, 
-technical, and engineering-oriented.Highlight if it is missing any of the core indicators.Address: {indicators}]"""
+  Include improvements for objectivity, clarity, and professionalism. Make sure your tone is factual, 
+technical, and engineering-oriented fit for an executive engineering audience.In your version include any 
+core success indicators that the users response did not cover.Address these report success indicators: {indicators}]"""
     }
 }
 

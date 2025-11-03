@@ -115,37 +115,10 @@ def handle_image_upload(uploaded_file):
 
 
 def user_profile(api: EnhancedAPIClient):
-    """Main profile page function - SAFE STYLING VERSION"""
-
-    # MINIMAL CSS - Only essential styles that won't break anything
-    st.markdown("""
-    <style>
-    .profile-header {
-        font-size: 2.5rem;
-        font-weight: 700;
-        color: #1f3a60;
-        text-align: center;
-        margin-bottom: 2rem;
-    }
-    .profile-section {
-        background: white;
-        padding: 2rem;
-        border-radius: 10px;
-        border: 1px solid #e0e0e0;
-        margin-bottom: 2rem;
-    }
-    .profile-card {
-        background: #f8f9fa;
-        padding: 1.5rem;
-        border-radius: 8px;
-        margin-bottom: 1rem;
-        border-left: 4px solid #1f3a60;
-    }
-    </style>
-    """, unsafe_allow_html=True)
+    """Main profile page function - CLEANED UP VERSION"""
 
     # Simple Header
-    st.markdown('<div class="profile-header">👤 Your Profile</div>', unsafe_allow_html=True)
+    st.title("👤 Your Profile")
 
     # Initialize session state
     if 'profile_picture' not in st.session_state:
@@ -159,228 +132,203 @@ def user_profile(api: EnhancedAPIClient):
         ErrorHandler.show_error("Failed to load profile data")
         return
 
-    # Profile Management Section - PRESERVE EXACT WORKING CODE
-    with st.container():
-        st.markdown("### 📝 Manage Your Profile")
+    # Profile Management Section - NO CONTAINERS
+    st.markdown("### 📝 Manage Your Profile")
 
-        with st.container():
-            col1, col2 = st.columns([40, 60])
+    col1, col2 = st.columns([40, 60])
 
-            with col1:
-                # Profile Picture Section - EXACT WORKING CODE
-                st.markdown('<div class="profile-card">', unsafe_allow_html=True)
-                st.markdown("**🎯 Profile Picture**")
+    with col1:
+        # Profile Picture Section - SIMPLIFIED WITHOUT CONTAINER
+        st.markdown("**Profile Picture**")
 
-                # Get current picture
-                current_picture = st.session_state.profile_picture or user_data.get('profile_picture')
-                display_profile_picture(current_picture, width=180)
+        # Get current picture
+        current_picture = st.session_state.profile_picture or user_data.get('profile_picture')
+        display_profile_picture(current_picture, width=180)
 
-                # Upload section
-                uploaded_file = st.file_uploader(
-                    "📸 Upload New Photo",
-                    type=['jpg', 'jpeg', 'png'],
-                    help="JPG or PNG, up to 5MB",
-                    key=f"uploader_{st.session_state.uploader_key}"
-                )
+        # Upload section
+        uploaded_file = st.file_uploader(
+            "📸 Upload New Photo",
+            type=['jpg', 'jpeg', 'png'],
+            help="JPG or PNG, up to 5MB",
+            key=f"uploader_{st.session_state.uploader_key}"
+        )
 
-                # Process uploaded file
-                processed_image = None
-                if uploaded_file is not None:
-                    processed_image = handle_image_upload(uploaded_file)
-                    if processed_image:
-                        st.session_state.temp_profile_picture = processed_image
-                        st.success("✅ Image processed! Click 'Save Profile Picture' to apply.")
+        # Process uploaded file
+        processed_image = None
+        if uploaded_file is not None:
+            processed_image = handle_image_upload(uploaded_file)
+            if processed_image:
+                st.session_state.temp_profile_picture = processed_image
+                st.success("✅ Image processed! Click 'Save Profile Picture' to apply.")
 
-                        # Show preview
-                        st.markdown("**Preview:**")
-                        display_profile_picture(processed_image, width=120)
+                # Show preview
+                st.markdown("**Preview:**")
+                display_profile_picture(processed_image, width=120)
 
-                # Action Buttons - PRESERVE EXACT LOGIC
-                col_save, col_revert = st.columns(2)
-                with col_save:
-                    if st.button("💾 Save Profile Picture", use_container_width=True,
-                                 disabled=not hasattr(st.session_state, 'temp_profile_picture')):
-                        with st.spinner("🔄 Saving profile picture..."):
-                            update_data = {
-                                'email': user_data.get('email', ''),
-                                'full_name': user_data.get('full_name', ''),
-                                'profile_picture': st.session_state.temp_profile_picture
-                            }
-                            success, result = api.update_profile(update_data)
-                            if success:
-                                st.success("✅ Profile picture updated successfully!")
-                                st.session_state.profile_picture = st.session_state.temp_profile_picture
-                                del st.session_state.temp_profile_picture
-                                st.session_state.uploader_key += 1
-                                st.rerun()
-                            else:
-                                st.error(f"Failed to save: {result.get('detail', 'Unknown error')}")
-
-                with col_revert:
-                    if st.button("↩️ Revert", use_container_width=True,
-                                 disabled=not hasattr(st.session_state, 'temp_profile_picture')):
-                        if hasattr(st.session_state, 'temp_profile_picture'):
-                            del st.session_state.temp_profile_picture
+        # Action Buttons
+        col_save, col_revert = st.columns(2)
+        with col_save:
+            if st.button("💾 Save Profile Picture", use_container_width=True,
+                         disabled=not hasattr(st.session_state, 'temp_profile_picture')):
+                with st.spinner("🔄 Saving profile picture..."):
+                    update_data = {
+                        'email': user_data.get('email', ''),
+                        'full_name': user_data.get('full_name', ''),
+                        'profile_picture': st.session_state.temp_profile_picture
+                    }
+                    success, result = api.update_profile(update_data)
+                    if success:
+                        st.success("✅ Profile picture updated successfully!")
+                        st.session_state.profile_picture = st.session_state.temp_profile_picture
+                        del st.session_state.temp_profile_picture
                         st.session_state.uploader_key += 1
                         st.rerun()
+                    else:
+                        st.error(f"Failed to save: {result.get('detail', 'Unknown error')}")
 
-                # Remove picture button
-                if current_picture and not hasattr(st.session_state, 'temp_profile_picture'):
-                    if st.button("🗑️ Remove Picture", use_container_width=True):
-                        with st.spinner("🔄 Removing profile picture..."):
-                            update_data = {
-                                'email': user_data.get('email', ''),
-                                'full_name': user_data.get('full_name', ''),
-                                'profile_picture': None
-                            }
+        with col_revert:
+            if st.button("↩️ Revert", use_container_width=True,
+                         disabled=not hasattr(st.session_state, 'temp_profile_picture')):
+                if hasattr(st.session_state, 'temp_profile_picture'):
+                    del st.session_state.temp_profile_picture
+                st.session_state.uploader_key += 1
+                st.rerun()
+
+        # Remove picture button
+        if current_picture and not hasattr(st.session_state, 'temp_profile_picture'):
+            if st.button("🗑️ Remove Picture", use_container_width=True):
+                with st.spinner("🔄 Removing profile picture..."):
+                    update_data = {
+                        'email': user_data.get('email', ''),
+                        'full_name': user_data.get('full_name', ''),
+                        'profile_picture': None
+                    }
+                    success, result = api.update_profile(update_data)
+                    if success:
+                        st.success("✅ Profile picture removed successfully!")
+                        st.session_state.profile_picture = None
+                        if 'profile_picture' in user_data:
+                            user_data['profile_picture'] = None
+                        st.rerun()
+                    else:
+                        st.error(f"Failed to remove: {result.get('detail', 'Unknown error')}")
+
+    with col2:
+        # Profile Information Form - NO CONTAINER
+        st.markdown("**Profile Information**")
+
+        with st.form("profile_form", clear_on_submit=False):
+            col_a, col_b = st.columns(2)
+            with col_a:
+                username = st.text_input(
+                    "**Username**",
+                    value=user_data.get('username', ''),
+                    disabled=True
+                )
+            with col_b:
+                role = st.text_input(
+                    "**Role**",
+                    value=user_data.get('role', 'candidate').title(),
+                    disabled=True
+                )
+
+            email = st.text_input(
+                "**Email Address** *",
+                value=user_data.get('email', ''),
+                placeholder="your.email@example.com"
+            )
+
+            full_name = st.text_input(
+                "**Full Name**",
+                value=user_data.get('full_name', ''),
+                placeholder="Enter your full name"
+            )
+
+            submit_button = st.form_submit_button("💾 Update Profile", use_container_width=True)
+
+            if submit_button:
+                # Validate required fields
+                if not email.strip():
+                    st.error("Email address is required")
+                else:
+                    update_data = {
+                        'email': email,
+                        'full_name': full_name or ""
+                    }
+
+                    # Check if changes were made
+                    changes_made = (
+                            email != user_data.get('email') or
+                            full_name != user_data.get('full_name', '')
+                    )
+
+                    if changes_made:
+                        with st.spinner("🔄 Updating profile..."):
                             success, result = api.update_profile(update_data)
                             if success:
-                                st.success("✅ Profile picture removed successfully!")
-                                st.session_state.profile_picture = None
-                                if 'profile_picture' in user_data:
-                                    user_data['profile_picture'] = None
+                                st.success("✅ Profile updated successfully!")
+                                user_data['email'] = email
+                                user_data['full_name'] = full_name
                                 st.rerun()
                             else:
-                                st.error(f"Failed to remove: {result.get('detail', 'Unknown error')}")
+                                error_message = result.get('detail', 'Unknown error occurred')
+                                error_code = result.get('error_code', '')
 
-                st.markdown('</div>', unsafe_allow_html=True)
+                                # ✅ Handle duplicate email error specifically
+                                if error_code == "EMAIL_EXISTS" or "email already registered" in error_message.lower():
+                                    st.error("""
+                                    ❌ **Email Already Registered**
 
-            with col2:
-                # Profile Information Form - EXACT WORKING CODE
-                st.markdown('<div class="profile-card">', unsafe_allow_html=True)
-                st.markdown("**📋 Profile Information**")
+                                    The email address **`{}`** is already associated with another account. 
 
-                with st.form("profile_form", clear_on_submit=False):
-                    col_a, col_b = st.columns(2)
-                    with col_a:
-                        username = st.text_input(
-                            "**Username**",
-                            value=user_data.get('username', ''),
-                            disabled=True
-                        )
-                    with col_b:
-                        role = st.text_input(
-                            "**Role**",
-                            value=user_data.get('role', 'candidate').title(),
-                            disabled=True
-                        )
-
-                    email = st.text_input(
-                        "**Email Address** *",
-                        value=user_data.get('email', ''),
-                        placeholder="your.email@example.com"
-                    )
-
-                    full_name = st.text_input(
-                        "**Full Name**",
-                        value=user_data.get('full_name', ''),
-                        placeholder="Enter your full name"
-                    )
-
-                    submit_button = st.form_submit_button("💾 Update Profile", use_container_width=True)
-
-                    if submit_button:
-                        # Validate required fields
-                        if not email.strip():
-                            st.error("Email address is required")
-                        else:
-                            update_data = {
-                                'email': email,
-                                'full_name': full_name or ""
-                            }
-
-                            # Check if changes were made
-                            changes_made = (
-                                    email != user_data.get('email') or
-                                    full_name != user_data.get('full_name', '')
-                            )
-
-                            if changes_made:
-                                with st.spinner("🔄 Updating profile..."):
-                                    success, result = api.update_profile(update_data)
-                                    if success:
-                                        st.success("✅ Profile updated successfully!")
-                                        user_data['email'] = email
-                                        user_data['full_name'] = full_name
-                                        st.rerun()
-                                    else:
-                                        error_message = result.get('detail', 'Unknown error occurred')
-                                        error_code = result.get('error_code', '')
-
-                                        # ✅ Handle duplicate email error specifically
-                                        if error_code == "EMAIL_EXISTS" or "email already registered" in error_message.lower():
-                                            st.error("""
-                                            ❌ **Email Already Registered**
-
-                                            The email address **`{}`** is already associated with another account. 
-
-                                            Please use a different email address.
-                                            """.format(email.strip()))
-                                        else:
-                                            st.error(f"❌ Failed to update profile: {error_message}")
-
-                st.markdown('</div>', unsafe_allow_html=True)
+                                    Please use a different email address.
+                                    """.format(email.strip()))
+                                else:
+                                    st.error(f"❌ Failed to update profile: {error_message}")
 
     st.markdown("---")
 
-    # Account Status Section
-    with st.container():
-        st.markdown("### 📊 Account Overview")
+    # Account Status Section - NO CONTAINERS
+    st.markdown("### 📊 Account Overview")
 
-        with st.container():
-            col1, col2 = st.columns(2)
+    col1, col2 = st.columns(2)
 
-            with col1:
-                st.markdown('<div class="profile-card">', unsafe_allow_html=True)
-                st.markdown("**🔐 Account Status**")
-                st.write(f"**👤 Username:** {user_data.get('username', 'N/A')}")
-                st.write(f"**🎯 Role:** {user_data.get('role', 'candidate').title()}")
-                st.write(
-                    f"**📧 Email Verified:** {'✅ Verified' if user_data.get('is_verified', False) else '❌ Not Verified'}")
-                st.write(f"**🟢 Account Active:** {'✅ Active' if user_data.get('is_active', True) else '❌ Inactive'}")
-                st.write(f"**📅 Member Since:** {user_data.get('created_at', 'N/A')}")
-                st.markdown('</div>', unsafe_allow_html=True)
+    with col1:
+        st.markdown("**Account Status**")
+        st.write(f"**👤 Username:** {user_data.get('username', 'N/A')}")
+        st.write(f"**🎯 Role:** {user_data.get('role', 'candidate').title()}")
+        st.write(
+            f"**📧 Email Verified:** {'✅ Verified' if user_data.get('is_verified', False) else '❌ Not Verified'}")
+        st.write(f"**🟢 Account Active:** {'✅ Active' if user_data.get('is_active', True) else '❌ Inactive'}")
+        st.write(f"**📅 Member Since:** {user_data.get('created_at', 'N/A')}")
 
-            with col2:
-                st.markdown('<div class="profile-card">', unsafe_allow_html=True)
-                st.markdown("**💡 Profile Tips**")
-                st.write("**🎯 Professional Image:**")
-                st.write("• Use a clear, professional headshot")
-                st.write("• Square images work best")
-                st.write("• Well-lit, high-quality photos")
-                st.markdown('</div>', unsafe_allow_html=True)
+    with col2:
+        st.markdown("**Profile Tips**")
+        st.write("**🎯 Professional Image:**")
+        st.write("• Use a clear, professional headshot")
+        st.write("• Square images work best")
+        st.write("• Well-lit, high-quality photos")
 
     # Email Verification Section
     if not user_data.get('is_verified', False):
         st.markdown("---")
-        with st.container():
-            st.markdown("### 📧 Email Verification")
-            verification.verification_ui(api)
+        st.markdown("### 📧 Email Verification")
+        verification.verification_ui(api)
 
     # Simple Footer
     st.markdown("---")
-    with st.container():
-        st.markdown("""
-        <div style='text-align: center; padding: 2rem; background: #f8f9fa; border-radius: 10px;'>
-            <h4 style='color: #1f3a60; margin-bottom: 1rem;'>Engineering Report Deck Profile</h4>
-            <p style='color: #666; margin: 0;'>
-                Your Professional Identity • Built for Engineering Excellence
-            </p>
-        </div>
-        """, unsafe_allow_html=True)
-
-        # Footer
+    # Footer
     st.markdown("""
-          <div style='text-align: center; margin-top: 3rem; padding: 2rem; background: #f8f9fa; border-radius: 10px;'>
-              <p style='color: #666; margin: 0;'>
-                  <strong>Engineering Report Deck</strong> • Confidence with Clarity
-              </p>
-              <p style='color: #888; font-size: 0.9rem; margin: 0.5rem 0 0 0;'>
-                  TurtleTEC Solutions Africa
-                  © 2025. ALL RIGHTS RESERVED.
-              </p>
-          </div>
-          """, unsafe_allow_html=True)
+    <div style='text-align: center; margin-top: 3rem; padding: 2rem; background: #f8f9fa; border-radius: 10px;'>
+        <p style='color: #666; margin: 0;'>
+            <strong>Engineering Report Deck</strong> • Confidence with Clarity
+        </p>
+        <p style='color: #888; font-size: 0.9rem; margin: 0.5rem 0 0 0;'>
+            TurtleTEC Solutions Africa
+            © 2025. ALL RIGHTS RESERVED.
+        </p>
+    </div>
+    """, unsafe_allow_html=True)
 
 
 def profile_page(api: EnhancedAPIClient):

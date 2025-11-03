@@ -33,29 +33,30 @@ def apply_dashboard_styles():
         margin-bottom: 2rem;
     }
 
-    /* Header Section */
-    .dashboard-header {
-        background: linear-gradient(135deg, #1f3a60 0%, #4a6fa5 100%);
-        color: white;
-        padding: 2.5rem;
-        border-radius: 20px;
+    /* Welcome Info Section - Subtle and Clean */
+    .welcome-info {
+        background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+        padding: 1.5rem;
+        border-radius: 12px;
         margin-bottom: 2rem;
-        box-shadow: 0 8px 25px rgba(31, 58, 96, 0.15);
+        border-left: 4px solid #3498db;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
     }
 
     .welcome-text {
-        font-size: 1.2rem;
-        font-weight: 700;
-        margin-bottom: 0.5rem;
-        background: linear-gradient(135deg, #ffffff 0%, #e3f2fd 100%);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
+        font-size: 1.3rem;
+        font-weight: 600;
+        color: #2c3e50;
+        margin-bottom: 0.75rem;
     }
 
     .user-stats {
-        font-size: 0.9rem;
-        opacity: 0.9;
-        margin-bottom: 0.25rem;
+        font-size: 0.95rem;
+        color: #5d6d7e;
+        margin-bottom: 0.4rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
     }
 
     /* Metrics Cards */
@@ -214,7 +215,7 @@ def apply_dashboard_styles():
 
 
 def show_dashboard_header(api: EnhancedAPIClient):
-    """Display personalized header with user info fetched from API"""
+    """Display personalized header with user info in a clean, subtle design"""
 
     # Fetch current user data from API
     with LoadingState("Loading your profile..."):
@@ -244,12 +245,13 @@ def show_dashboard_header(api: EnhancedAPIClient):
     # Get last login time
     last_login = st.session_state.get('last_login', datetime.now().strftime("%Y-%m-%d %H:%M"))
 
+    # Display welcome info in a clean, subtle container
     st.markdown(f"""
-    <div class="dashboard-header">
+    <div class="welcome-info">
         <div class="welcome-text">👋 Welcome back, {full_name}!</div>
-        <div class="user-stats">📅 Last login: {last_login}</div>
-        <div class="user-stats">🎯 Role: {user_role_display}</div>
-         <div class="user-stats">📧 Email: {email}</div>
+        <div class="user-stats">📅 <strong>Last login:</strong> {last_login}</div>
+        <div class="user-stats">🎯 <strong>Role:</strong> {user_role_display}</div>
+        <div class="user-stats">📧 <strong>Email:</strong> {email}</div>
     </div>
     """, unsafe_allow_html=True)
 

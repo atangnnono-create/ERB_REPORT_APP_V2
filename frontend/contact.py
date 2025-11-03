@@ -99,7 +99,7 @@ def show():
     st.set_page_config(
         page_title="Contact Us - Engineering Report Deck",
         page_icon="📞",
-        layout="centered"
+        layout="wide"
     )
 
     # Custom CSS for elegant styling

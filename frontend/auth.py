@@ -19,7 +19,7 @@ def set_professional_style():
             border-radius: 12px;
             padding: 0;  /* Remove padding from container */
             margin: 2rem auto;
-            max-width: 520px;
+            max-width: 420px;
             box-shadow: 
                 0 4px 6px -1px rgba(0, 0, 0, 0.1),
                 0 2px 4px -1px rgba(0, 0, 0, 0.06),
@@ -31,7 +31,7 @@ def set_professional_style():
 
         /* Form content area with proper padding */
         .form-content {
-            padding: 2.5rem;
+            padding: 0.5rem;
         }
 
         /* Enhanced button styling with gradient */
@@ -86,7 +86,7 @@ def set_professional_style():
         .form-header {
             text-align: center;
             margin-bottom: 0;  /* Remove bottom margin */
-            padding: 2.5rem 2.5rem 1.5rem 2.5rem;  /* Add proper padding */
+            padding: 1.0rem 1.0rem 0.5rem 1.0rem;  /* Add proper padding */
             background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
             border-bottom: 1px solid rgba(0, 0, 0, 0.05);
         }
@@ -95,7 +95,7 @@ def set_professional_style():
             color: #2d3748;
             font-size: 1.75rem;
             font-weight: 700;
-            margin-bottom: 0.5rem;
+            margin-bottom: 0.1rem;
             background: linear-gradient(135deg, #2d3748 0%, #4a5568 100%);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
@@ -186,10 +186,10 @@ def set_professional_style():
                 max-width: calc(100% - 2rem);
             }
             .form-header {
-                padding: 2rem 2rem 1rem 2rem;
+                padding: 0.5rem 0.5rem 0.5rem 05rem;
             }
             .form-content {
-                padding: 2rem;
+                padding: 1rem;
             }
         }
         </style>

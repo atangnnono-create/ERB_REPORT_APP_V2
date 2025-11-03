@@ -27,7 +27,7 @@ def get_user_permissions(role: str) -> set:
     permissions = {
         "admin": {"create_reports", "view_own_reports","export_reports",  "ai_feedback", "ai_features", "view_all_reports","review_reports",
                   "manage_users", "system_settings", "audit_access", "export_data", },
-        "reviewer": {"create_reports", "view_own_reports", "export_reports", "ai_feedback", "ai_features", "view_all_reports", "review_reports",},
+        "reviewer": {"view_all_reports", "review_reports",},
         "engineer": {"create_reports", "view_own_reports", "export_reports", "ai_feedback", "ai_features"},
         "technologist": {"create_reports", "view_own_reports", "export_reports", "ai_feedback", "ai_features"},
         "technician": {"create_reports", "view_own_reports", "export_reports", "ai_feedback", "ai_features"},
@@ -250,15 +250,18 @@ def main_app():
     st.sidebar.title("🧭 Navigation")
 
     # Main pages for all users
-    main_pages = ["📊 Dashboard", "📝 Create Report", "📋 My Reports", "👤 Profile", "🛍️ Resources"]
+    main_pages = [ "👤 Profile", "🛍️ Resources"]
 
     # Role-specific pages
+    if "create_reports" in permissions:
+        main_pages.append("📊 Dashboard")
+        main_pages.append("📝 Create Report")
     if "ai_features" in permissions:
         main_pages.append("🤖 AI Assistant")
     if "review_reports" in permissions:
         main_pages.append("👀 Review Dashboard")
-    #if "view_all_reports" in permissions:
-    #    main_pages.append("📈 All Reports")
+    if "view_own_reports" in permissions:
+        main_pages.append("📋 My Reports")
     if "manage_users" in permissions or "system_settings" in permissions:
         main_pages.append("👑 Admin Dashboard")  # Single entry point
 
@@ -378,7 +381,7 @@ def main():
         # Set page config for verification page - FIRST Streamlit command
         st.set_page_config(
             page_title="Verify Email - Engineering Report Deck",
-            layout="centered"
+            layout="wide"
         )
 
         st.markdown("""
@@ -450,7 +453,7 @@ def main():
         # Set page config for password reset page
         st.set_page_config(
             page_title="Reset Password - Engineering Report Deck",
-            layout="centered"
+            layout="wide"
         )
 
         st.markdown("""
@@ -472,7 +475,7 @@ def main():
     ################################################################
     st.set_page_config(
         page_title="🏭 Engineering Report Deck",
-        layout="centered",
+        layout="wide",
         initial_sidebar_state="expanded"
     )
 
