@@ -18,10 +18,10 @@ class Settings(BaseSettings):
     GOOGLE_SERVICE_ACCOUNT_JSON_PATH: Optional[str] = None
     SPREADSHEET_ID: Optional[str] = None
     SHEET_NAME: Optional[str] = None
-    ADMIN_USERNAME: str = "admin"
-    ADMIN_PASSWORD: str = "admin123"
+    ADMIN_USERNAME: str = "fluid"
+    ADMIN_PASSWORD: str = "ElonMusk2024"
     ADMIN_EMAIL: str = "customengineeringreports@gmail.com"
-    ADMIN_FULL_NAME: str = "Administrator"
+    ADMIN_FULL_NAME: str = "Lefa-Molokwe"
     SMTP_SERVER: str = "smtp.gmail.com"
     SMTP_PORT: int = 587
     SMTP_USERNAME: str = "fluidair2010@gmail.com"
