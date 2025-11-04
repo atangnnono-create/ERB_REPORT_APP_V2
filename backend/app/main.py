@@ -5,7 +5,7 @@ import logging
 from datetime import datetime, UTC
 from sqlalchemy.orm import Session
 from contextlib import asynccontextmanager
-from backend.app.core.cache import cache_service
+
 # Import from new core structure
 from backend.app.core.config import settings
 from backend.app.core.database import init_db, check_database_health, get_db, Base
@@ -22,8 +22,6 @@ logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
 logger = logging.getLogger(__name__)
-
-
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -53,20 +51,9 @@ async def lifespan(app: FastAPI):
     else:
         logger.error("❌ Database health check failed")
 
-    # Check cache health
-    if hasattr(cache_service, 'health_check') and cache_service.health_check():
-        logger.info("✅ Cache health check passed")
-    else:
-        logger.warning("⚠️ Cache health check failed or not configured")
-
-
     yield
 
-
     logger.info("Shutting down Engineering Report Deck API...")
-
-
-
 
 app = FastAPI(
     title="Engineering Report Deck API",
@@ -74,7 +61,7 @@ app = FastAPI(
     version="1.0.0",
     docs_url="/docs" if settings.ENVIRONMENT != "production" else None,
     redoc_url="/redoc" if settings.ENVIRONMENT != "production" else None,
-lifespan=lifespan,
+    lifespan=lifespan,
 )
 
 # Add global exception handler
@@ -99,7 +86,6 @@ app.include_router(audit.router, prefix="/api/v1", tags=["audit"])
 app.include_router(review.router, prefix="/api/v1", tags=["review"])
 app.include_router(health.router, prefix="/api/v1", tags=["health"])
 app.include_router(password_reset.router, prefix="/api/v1", tags=["Password Reset"])
-
 
 def debug_admin_creation():
     """Debug function to check admin creation variables"""
@@ -135,7 +121,6 @@ def debug_admin_creation():
         db.rollback()
     finally:
         db.close()
-
 
 def create_admin_user():
     from backend.app.core.database import SessionLocal
@@ -178,29 +163,20 @@ def create_admin_user():
     finally:
         db.close()
 
-
-
-
-
-
-
 @app.get("/")
 async def root():
     return {"message": "Engineering Report Deck API is running 🚀", "version": "1.0.0"}
-
 
 @app.get("/health")
 async def health_check():
     """Comprehensive health check endpoint"""
     db_health = check_database_health()
-    cache_health = cache_service.health_check() if hasattr(cache_service, 'health_check') else False
 
     services = {
         "database": "healthy" if db_health else "unhealthy",
-        "cache": "healthy" if cache_health else "unhealthy",
     }
 
-    overall_health = "healthy" if all([db_health, cache_health]) else "degraded"
+    overall_health = "healthy" if db_health else "unhealthy"
 
     return {
         "status": overall_health,
@@ -208,7 +184,6 @@ async def health_check():
         "services": services,
         "version": "1.0.0"
     }
-
 
 #################TEMPORARY DEBUG CODE##################
 @app.get("/debug/users")
@@ -219,7 +194,6 @@ def debug_users(db: Session = Depends(get_db)):
     if success:
         return {"users": users}
     return {"users": []}
-
 
 @app.get("/debug/user/{email}")
 def debug_user(email: str, db: Session = Depends(get_db)):
@@ -237,7 +211,6 @@ def debug_user(email: str, db: Session = Depends(get_db)):
             "is_active": user.is_active
         }
     return {"error": "User not found"}
-
 
 if __name__ == "__main__":
     import uvicorn
