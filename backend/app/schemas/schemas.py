@@ -1,10 +1,7 @@
 from enum import Enum
-from pydantic import BaseModel, EmailStr, field_validator
+from pydantic import BaseModel, EmailStr, validator
 from typing import Optional, List, Dict, Any
 from datetime import datetime
-from pydantic import field_validator, constr
-
-
 
 # ✅ New Report Status Enum
 class ReportStatus(str, Enum):
@@ -13,7 +10,6 @@ class ReportStatus(str, Enum):
     UNDER_REVIEW = "under_review"
     APPROVED = "approved"
     REJECTED = "rejected"
-
 
 # ✅ NEW: ERB Stage Enums
 class ERBStage(str, Enum):
@@ -26,54 +22,46 @@ class ERBStage(str, Enum):
     APPROVED = "approved"
     REJECTED = "rejected"
 
-
 class StageStatus(str, Enum):
     NOT_STARTED = "not_started"
     IN_PROGRESS = "in_progress"
     COMPLETED = "completed"
-
 
 # ---------------- TOKEN SCHEMAS ----------------
 class Token(BaseModel):
     access_token: str
     token_type: str
 
-
 class TokenData(BaseModel):
     username: Optional[str] = None
 
-
 # -------- USERS --------
-
 class UserCreate(BaseModel):
-    username: constr(min_length=3, max_length=50, pattern=r'^[a-zA-Z0-9_]+$')
+    username: str
     email: EmailStr
-    password: constr(min_length=8)
+    password: str
     full_name: str
     role: str = "candidate"
 
-    @field_validator('username')
+    @validator('username')
     def validate_username(cls, v):
         if len(v) < 3:
             raise ValueError('Username must be at least 3 characters')
-        if not v.isalnum():
-            raise ValueError('Username must be alphanumeric')
+        if not v.replace('_', '').isalnum():
+            raise ValueError('Username must be alphanumeric (underscores allowed)')
         return v
 
-    @field_validator('password')
+    @validator('password')
     def validate_password(cls, v):
+        if len(v) < 8:
+            raise ValueError('Password must be at least 8 characters')
         if not any(c.isupper() for c in v):
             raise ValueError('Password must contain at least one uppercase letter')
         if not any(c.islower() for c in v):
             raise ValueError('Password must contain at least one lowercase letter')
         if not any(c.isdigit() for c in v):
             raise ValueError('Password must contain at least one digit')
-
-        if len(v) < 8:
-            raise ValueError('Password must be at least 8 characters')
-
         return v
-
 
 # User Roles Enum
 class UserRole(str, Enum):
@@ -84,14 +72,12 @@ class UserRole(str, Enum):
     TECHNICIAN = "technician"
     CANDIDATE = "candidate"
 
-
 # Enhanced User Schemas
 class UserBase(BaseModel):
     username: str
     email: Optional[EmailStr] = None
     full_name: str
     role: UserRole = UserRole.CANDIDATE
-
 
 class UserResponse(UserBase):
     id: int
@@ -102,7 +88,6 @@ class UserResponse(UserBase):
     class Config:
         from_attributes = True
 
-
 class UserUpdate(BaseModel):
     email: Optional[EmailStr] = None
     full_name: Optional[str] = None
@@ -110,12 +95,11 @@ class UserUpdate(BaseModel):
     is_active: Optional[bool] = None
     is_verified: Optional[bool] = None
 
-    @field_validator('email')
+    @validator('email')
     def validate_email(cls, v):
         if v and len(v) < 5:
             raise ValueError('Email must be at least 5 characters')
         return v
-
 
 # -------- COMPETENCIES --------
 class CompetencyCreate(BaseModel):
@@ -123,47 +107,36 @@ class CompetencyCreate(BaseModel):
     competency_title: str
     user_response: str
 
-
 class CompetencyResponse(CompetencyCreate):
     id: int
 
     class Config:
         from_attributes = True
 
-
 # -------- REPORTS --------
-
 class ReportBase(BaseModel):
     title: str
     content: Optional[str] = None
 
-
-# ✅ FIXED: Only ONE ReportCreate class
 class ReportCreate(ReportBase):
     competencies: List[CompetencyCreate]
-    status: ReportStatus = ReportStatus.DRAFT  # ✅ Add status with default
+    status: ReportStatus = ReportStatus.DRAFT
 
 class ReportSubmit(BaseModel):
-    """Schema for final report submission (always sets status=submitted)"""
     title: str
     content: Optional[str] = None
     competencies: List[CompetencyCreate]
 
-
-# ✅ FIXED: Only ONE ReportResponse class
 class ReportResponse(ReportBase):
     id: int
     owner_id: int
-    status: ReportStatus  # ✅ Include status in response
-    erb_stage: ERBStage  # ✅ NEW: ERB stage
-    current_stage_status: StageStatus  # ✅ NEW: Stage status
-
-    # ✅ NEW: Stage timestamps
+    status: ReportStatus
+    erb_stage: ERBStage
+    current_stage_status: StageStatus
     desktop_assessment_started: Optional[datetime] = None
     standard_review_started: Optional[datetime] = None
     professional_assessment_started: Optional[datetime] = None
     professional_review_started: Optional[datetime] = None
-
     submitted_at: Optional[datetime] = None
     reviewed_at: Optional[datetime] = None
     reviewed_by: Optional[int] = None
@@ -171,42 +144,32 @@ class ReportResponse(ReportBase):
     competencies: List[CompetencyResponse] = []
     created_at: datetime
     updated_at: Optional[datetime] = None
-
-    # Owner information
     owner_username: Optional[str] = None
     owner_full_name: Optional[str] = None
     owner_email: Optional[str] = None
-
-    # Reviewer information
     reviewer_username: Optional[str] = None
     reviewer_full_name: Optional[str] = None
 
     class Config:
         from_attributes = True
 
-
 class ReportUpdate(BaseModel):
     title: Optional[str] = None
     content: Optional[str] = None
     competencies: Optional[List[CompetencyCreate]] = None
-    status: Optional[ReportStatus] = None  # ✅ Status can be updated
-
+    status: Optional[ReportStatus] = None
 
 class ReviewerAssignment(BaseModel):
     reviewer_id: Optional[int] = None
 
-# ✅ New schema for review actions
 class ReportReview(BaseModel):
     status: ReportStatus
     review_notes: Optional[str] = None
 
-
-# ✅ NEW: Schema for ERB stage progression
 class StageProgression(BaseModel):
     next_stage: ERBStage
     notes: Optional[str] = None
     status: StageStatus = StageStatus.IN_PROGRESS
-
 
 # ✅ AUDIT LOG SCHEMAS
 class AuditLogBase(BaseModel):
@@ -215,10 +178,8 @@ class AuditLogBase(BaseModel):
     resource_id: Optional[int] = None
     details: Optional[Dict[str, Any]] = None
 
-
 class AuditLogCreate(AuditLogBase):
     pass
-
 
 class AuditLogResponse(AuditLogBase):
     id: int
@@ -231,7 +192,6 @@ class AuditLogResponse(AuditLogBase):
     class Config:
         from_attributes = True
 
-
 class AuditLogQuery(BaseModel):
     user_id: Optional[int] = None
     action: Optional[str] = None
@@ -239,16 +199,14 @@ class AuditLogQuery(BaseModel):
     limit: int = 100
     offset: int = 0
 
-
 class PasswordResetRequest(BaseModel):
     email: EmailStr
-
 
 class PasswordResetConfirm(BaseModel):
     token: str
     new_password: str
 
-    @field_validator('new_password')
+    @validator('new_password')
     def validate_password(cls, v):
         if len(v) < 8:
             raise ValueError('Password must be at least 8 characters')
@@ -260,32 +218,33 @@ class PasswordResetConfirm(BaseModel):
             raise ValueError('Password must contain at least one digit')
         return v
 
-
 class PasswordResetResponse(BaseModel):
     message: str
     email: str
-
 
 class PasswordChange(BaseModel):
     current_password: str
     new_password: str
 
-    @field_validator('new_password')
+    @validator('new_password')
     def validate_new_password(cls, v):
-        # Reuse the same validation as PasswordResetConfirm
-        return PasswordResetConfirm.validate_password(v)
-
+        if len(v) < 8:
+            raise ValueError('Password must be at least 8 characters')
+        if not any(c.isupper() for c in v):
+            raise ValueError('Password must contain at least one uppercase letter')
+        if not any(c.islower() for c in v):
+            raise ValueError('Password must contain at least one lowercase letter')
+        if not any(c.isdigit() for c in v):
+            raise ValueError('Password must contain at least one digit')
+        return v
 
 class StandardResponse(BaseModel):
-    """Standard API response format"""
     success: bool
     message: str
     data: Optional[Any] = None
     error_code: Optional[str] = None
 
-
 class PaginatedResponse(BaseModel):
-    """Paginated API response format"""
     data: List[Any]
     total: int
     page: int
@@ -294,21 +253,15 @@ class PaginatedResponse(BaseModel):
     has_next: bool
     has_prev: bool
 
-
 class ListResponse(BaseModel):
-    """List API response format"""
     data: List[Any]
     total: int
 
-
 class DetailResponse(BaseModel):
-    """Detail API response format"""
     data: Any
-
 
 class VerifyEmail(BaseModel):
     token: str
-
 
 class PaginatedUsersResponse(BaseModel):
     users: List[UserResponse]
