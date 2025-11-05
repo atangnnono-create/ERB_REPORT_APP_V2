@@ -1,6 +1,5 @@
 import os
 from typing import Optional, List
-
 from dotenv import load_dotenv
 from pydantic import field_validator, ConfigDict
 from pydantic_settings import BaseSettings
@@ -11,26 +10,25 @@ load_dotenv()
 class Settings(BaseSettings):
     # Environment variables (Pydantic will auto-load these from .env)
     OPENAI_API_KEY: Optional[str] = None
-    DATABASE_URL: str = "sqlite:///./reports.db"
-    SECRET_KEY: str = "4f439ce8d87aff8d7f4af5096cf132cb90b79a04f6af7e2f7612983942bd0fae"
-    ALGORITHM: str = "HS256"
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
+    DATABASE_URL: str = "DATABASE_URL"
+    SECRET_KEY: str = "SECRET_KEY"
+    ALGORITHM: str = "ALGORITHM"
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = "ACCESS_TOKEN_EXPIRE_MINUTES"
     GOOGLE_SERVICE_ACCOUNT_JSON_PATH: Optional[str] = None
     SPREADSHEET_ID: Optional[str] = None
     SHEET_NAME: Optional[str] = None
-    ADMIN_USERNAME: str = "fluid"
-    ADMIN_PASSWORD: str = "ElonMusk2024"
-    ADMIN_EMAIL: str = "customengineeringreports@gmail.com"
-    ADMIN_FULL_NAME: str = "Lefa-Molokwe"
-    SMTP_SERVER: str = "smtp.gmail.com"
-    SMTP_PORT: int = 587
-    SMTP_USERNAME: str = "fluidair2010@gmail.com"
-    SMTP_PASSWORD: str = "ydwhlyujkoffbmgi"
+    ADMIN_USERNAME: str = "ADMIN_USERNAME"
+    ADMIN_PASSWORD: str = "ADMIN_PASSWORD"
+    ADMIN_EMAIL: str = "ADMIN_EMAIL"
+    ADMIN_FULL_NAME: str = "ADMIN_FULL_NAME"
+    SMTP_SERVER: str = "SMTP_SERVER"
+    SMTP_PORT: int = "SMTP_PORT"
+    SMTP_USERNAME: str = "SMTP_USERNAME"
+    SMTP_PASSWORD: str = "SMTP_PASSWORD"
     FROM_EMAIL: str = "noreply@engineeringreports.com"
-    BASE_URL: str = "http://localhost:8501"
+    BASE_URL: str = "BASE_URL"
     SMTP_TIMEOUT: int = 30
-    ENVIRONMENT: str = "development"
-    REDIS_URL: str = "redis://localhost:6379/0"
+    ENVIRONMENT: str = "ENVIRONMENT"
     APP_NAME: str = "Engineering Report Deck"
     RATE_LIMIT_REQUESTS: int = 100
     RATE_LIMIT_WINDOW: int = 3600
