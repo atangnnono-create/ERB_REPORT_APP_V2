@@ -1,13 +1,12 @@
 import os
 from typing import Optional, List
 from dotenv import load_dotenv
-from pydantic import field_validator, ConfigDict
-from pydantic_settings import BaseSettings
+from pydantic import BaseModel, validator
 
 load_dotenv()
 
 
-class Settings(BaseSettings):
+class Settings(BaseModel):
     # Environment variables (Pydantic will auto-load these from .env)
     OPENAI_API_KEY: Optional[str] = None
     DATABASE_URL: str = "DATABASE_URL"
@@ -36,50 +35,34 @@ class Settings(BaseSettings):
     # CORS - this needs special handling
     allowed_origins: List[str] = ["http://localhost:3000", "http://localhost:8501"]
 
-    # Pydantic V2 config
-    model_config = ConfigDict(
-        env_file=".env",
-        case_sensitive=True,
-        extra="allow"
-    )
+    class Config:
+        env_file = ".env"
+        case_sensitive = True
 
-    @field_validator('allowed_origins', mode='before')
-    @classmethod
-    def parse_allowed_origins(cls, v):
-        if isinstance(v, str):
-            return [origin.strip() for origin in v.split(",") if origin.strip()]
-        return v or ["http://localhost:3000", "http://localhost:8501"]
-
-    @field_validator('SECRET_KEY', mode='after')
-    @classmethod
+    @validator('SECRET_KEY')
     def validate_secret_key(cls, v):
-        default_key = "4f439ce8d87aff8d7f4af5096cf132cb90b79a04f6af7e2f7612983942bd0fae"
+        default_key = "dev-key-change-in-production"
         if not v or v == default_key:
             if os.getenv("ENVIRONMENT") == "production":
                 raise ValueError(
-                    "SECRET_KEY must be set in production environment. "
-                    "Generate a secure key with: openssl rand -hex 32"
+                    "SECRET_KEY must be set in production. Generate with: openssl rand -hex 32"
                 )
             print("⚠️  WARNING: Using default secret key - not suitable for production")
         elif len(v) < 32:
-            raise ValueError("SECRET_KEY must be at least 32 characters long")
+            raise ValueError("SECRET_KEY must be at least 32 characters")
         return v
 
-    @field_validator('OPENAI_API_KEY', mode='after')
-    @classmethod
-    def validate_openai_key(cls, v):
+    @validator('ADMIN_PASSWORD')
+    def validate_admin_password(cls, v):
         if not v and os.getenv("ENVIRONMENT") == "production":
-            print("⚠️  WARNING: OPENAI_API_KEY not set - AI features will be disabled")
+            raise ValueError("ADMIN_PASSWORD must be set in production")
         return v
 
-    @field_validator('DATABASE_URL', mode='after')
-    @classmethod
-    def validate_database_url(cls, v):
-        if not v:
-            raise ValueError("DATABASE_URL must be set")
-        if "sqlite" not in v and "postgresql" not in v:
-            raise ValueError("DATABASE_URL must be a SQLite or PostgreSQL connection string")
-        return v
+    @validator('allowed_origins', pre=True)
+    def parse_allowed_origins(cls, v):
+        if isinstance(v, str):
+            return [origin.strip() for origin in v.split(",")]
+        return v or []
 
     @property
     def is_production(self) -> bool:
