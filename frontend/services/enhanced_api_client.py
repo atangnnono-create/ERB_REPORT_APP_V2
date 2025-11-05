@@ -555,6 +555,13 @@ class EnhancedAPIClient:
         """Get database storage metrics"""
         return self._request_with_retry('GET', '/api/v1/admin/database/size')
 
+    def submit_contact_form(self, contact_data: dict) -> Tuple[bool, Any]:
+        """Submit contact form to backend"""
+        return self._request_with_retry(
+            'POST',
+            '/api/v1/contact/submit',
+            json=contact_data
+        )
 
 # Global API client instance
 api_client = EnhancedAPIClient()

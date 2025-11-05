@@ -358,7 +358,7 @@ def about_page():
 
 def contact_page():
     """Contact page"""
-    contact.show()
+    contact.contact_page(api)
 
 
 def main():

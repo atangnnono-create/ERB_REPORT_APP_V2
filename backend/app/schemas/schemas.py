@@ -1,5 +1,5 @@
 from enum import Enum
-from pydantic import BaseModel, EmailStr, validator
+from pydantic import BaseModel, EmailStr, field_validator, ConfigDict
 from typing import Optional, List, Dict, Any
 from datetime import datetime
 
@@ -43,7 +43,8 @@ class UserCreate(BaseModel):
     full_name: str
     role: str = "candidate"
 
-    @validator('username')
+    @field_validator('username')
+    @classmethod
     def validate_username(cls, v):
         if len(v) < 3:
             raise ValueError('Username must be at least 3 characters')
@@ -51,7 +52,8 @@ class UserCreate(BaseModel):
             raise ValueError('Username must be alphanumeric (underscores allowed)')
         return v
 
-    @validator('password')
+    @field_validator('password')
+    @classmethod
     def validate_password(cls, v):
         if len(v) < 8:
             raise ValueError('Password must be at least 8 characters')
@@ -85,8 +87,7 @@ class UserResponse(UserBase):
     is_verified: bool
     created_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 class UserUpdate(BaseModel):
     email: Optional[EmailStr] = None
@@ -95,7 +96,8 @@ class UserUpdate(BaseModel):
     is_active: Optional[bool] = None
     is_verified: Optional[bool] = None
 
-    @validator('email')
+    @field_validator('email')
+    @classmethod
     def validate_email(cls, v):
         if v and len(v) < 5:
             raise ValueError('Email must be at least 5 characters')
@@ -110,8 +112,7 @@ class CompetencyCreate(BaseModel):
 class CompetencyResponse(CompetencyCreate):
     id: int
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 # -------- REPORTS --------
 class ReportBase(BaseModel):
@@ -150,8 +151,7 @@ class ReportResponse(ReportBase):
     reviewer_username: Optional[str] = None
     reviewer_full_name: Optional[str] = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 class ReportUpdate(BaseModel):
     title: Optional[str] = None
@@ -189,8 +189,7 @@ class AuditLogResponse(AuditLogBase):
     user_agent: Optional[str]
     created_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 class AuditLogQuery(BaseModel):
     user_id: Optional[int] = None
@@ -206,7 +205,8 @@ class PasswordResetConfirm(BaseModel):
     token: str
     new_password: str
 
-    @validator('new_password')
+    @field_validator('new_password')
+    @classmethod
     def validate_password(cls, v):
         if len(v) < 8:
             raise ValueError('Password must be at least 8 characters')
@@ -226,7 +226,8 @@ class PasswordChange(BaseModel):
     current_password: str
     new_password: str
 
-    @validator('new_password')
+    @field_validator('new_password')
+    @classmethod
     def validate_new_password(cls, v):
         if len(v) < 8:
             raise ValueError('Password must be at least 8 characters')
@@ -274,3 +275,13 @@ class PaginatedReportsResponse(BaseModel):
     total_count: int
     page: int
     page_size: int
+
+# Add this to your schemas.py file
+class ContactForm(BaseModel):
+    name: str
+    email: str
+    subject: str
+    message: str
+
+    class Config:
+        from_attributes = True

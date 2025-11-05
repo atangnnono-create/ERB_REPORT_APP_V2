@@ -7,6 +7,8 @@ from email.utils import formataddr
 from typing import Optional, Tuple
 import time
 from datetime import datetime
+from backend.app.schemas import schemas
+from backend.app.models import models
 
 logger = logging.getLogger(__name__)
 
@@ -648,6 +650,115 @@ class EmailService:
         else:
             return False, f"Author: {msg1 if not success1 else 'OK'}, Admin: {msg2 if not success2 else 'OK'}"
 
+    def send_contact_form_email(self, contact_data, user: Optional[models.User] = None) -> Tuple[bool, str]:
+        """Send contact form submission to admin"""
+        subject = f"📧 Contact Form: {contact_data.subject}"
+
+        # Build user context section
+        user_context = ""
+        if user:
+            user_context = f"""
+            <div style="
+                background: #e8f4fd;
+                padding: 15px;
+                border-radius: 8px;
+                border-left: 4px solid #3498db;
+                margin: 15px 0;
+            ">
+                <h4 style="margin: 0 0 10px 0; color: #2c3e50;">👤 User Account Details</h4>
+                <table style="width: 100%; border-collapse: collapse;">
+                    <tr>
+                        <td style="padding: 5px 10px; border-bottom: 1px solid #d1ecf1;"><strong>Username:</strong></td>
+                        <td style="padding: 5px 10px; border-bottom: 1px solid #d1ecf1;">{user.username}</td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 5px 10px; border-bottom: 1px solid #d1ecf1;"><strong>Role:</strong></td>
+                        <td style="padding: 5px 10px; border-bottom: 1px solid #d1ecf1;">{user.role}</td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 5px 10px; border-bottom: 1px solid #d1ecf1;"><strong>User ID:</strong></td>
+                        <td style="padding: 5px 10px; border-bottom: 1px solid #d1ecf1;">{user.id}</td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 5px 10px;"><strong>Verified:</strong></td>
+                        <td style="padding: 5px 10px;">{'✅ Yes' if user.is_verified else '❌ No'}</td>
+                    </tr>
+                </table>
+            </div>
+            <hr style="margin: 20px 0;">
+            """
+
+        html_content = self._create_email_template(
+            title="New Contact Form Submission",
+            username="Admin",
+            main_content=f"""
+            <p>You have received a new contact form submission from the Engineering Report Deck platform.</p>
+
+            {user_context}
+
+            <div style="background: #f8f9fa; padding: 20px; border-radius: 8px;">
+                <h4 style="margin: 0 0 15px 0; color: #2c3e50;">📋 Submission Details</h4>
+                <table style="width: 100%; border-collapse: collapse;">
+                    <tr>
+                        <td style="padding: 8px 12px; border-bottom: 1px solid #dee2e6;"><strong>From:</strong></td>
+                        <td style="padding: 8px 12px; border-bottom: 1px solid #dee2e6;">{contact_data.name} ({contact_data.email})</td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 8px 12px; border-bottom: 1px solid #dee2e6;"><strong>Subject:</strong></td>
+                        <td style="padding: 8px 12px; border-bottom: 1px solid #dee2e6;">{contact_data.subject}</td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 8px 12px; border-bottom: 1px solid #dee2e6;"><strong>Time:</strong></td>
+                        <td style="padding: 8px 12px; border-bottom: 1px solid #dee2e6;">{datetime.now().strftime('%Y-%m-%d at %H:%M:%S')}</td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 8px 12px; border-bottom: 1px solid #dee2e6;"><strong>User Type:</strong></td>
+                        <td style="padding: 8px 12px; border-bottom: 1px solid #dee2e6;">{'👤 Registered User' if user else '👥 Guest User'}</td>
+                    </tr>
+                </table>
+            </div>
+
+            <div style="margin-top: 25px;">
+                <h4 style="margin: 0 0 15px 0; color: #2c3e50;">💬 Message Content</h4>
+                <div style="
+                    background: white;
+                    padding: 20px;
+                    border: 1px solid #e9ecef;
+                    border-radius: 8px;
+                    line-height: 1.6;
+                    color: #495057;
+                ">
+                    {contact_data.message}
+                </div>
+            </div>
+            """
+        )
+
+        text_content = f"""
+        New Contact Form Submission - Engineering Report Deck
+
+        Submission Details:
+        From: {contact_data.name} ({contact_data.email})
+        Subject: {contact_data.subject}
+        Time: {datetime.now().strftime('%Y-%m-%d at %H:%M:%S')}
+        User Type: {'Registered User' if user else 'Guest User'}
+
+        {f'''
+        User Account Details:
+        Username: {user.username}
+        Role: {user.role}
+        User ID: {user.id}
+        Verified: {'Yes' if user.is_verified else 'No'}
+        ''' if user else ''}
+
+        Message:
+        {contact_data.message}
+
+        ---
+        This message was sent from the Engineering Report Deck contact form.
+        """
+
+        return self.send_email("customengineeringreports@gmail.com", subject, html_content, text_content)
 
 # Global email service instance
 email_service = EmailService()

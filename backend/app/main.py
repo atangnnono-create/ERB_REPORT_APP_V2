@@ -11,9 +11,7 @@ from backend.app.core.config import settings
 from backend.app.core.database import init_db, check_database_health, get_db, Base
 from backend.app.core.loggings import setup_logging
 from backend.app.core.exceptions import global_exception_handler
-from backend.app.routers import auth, admin, profile, stats, review, health
-from backend.app.routers import audit, reports
-from backend.app.routers import password_reset
+from backend.app.routers import auth, admin, audit, reports, profile, stats, review, health, password_reset, contact
 from backend.app.core.exceptions import global_exception_handler, AppException
 
 # Configure logging
@@ -86,6 +84,7 @@ app.include_router(audit.router, prefix="/api/v1", tags=["audit"])
 app.include_router(review.router, prefix="/api/v1", tags=["review"])
 app.include_router(health.router, prefix="/api/v1", tags=["health"])
 app.include_router(password_reset.router, prefix="/api/v1", tags=["Password Reset"])
+app.include_router(contact.router, prefix="/api/v1", tags=["contact"])
 
 def debug_admin_creation():
     """Debug function to check admin creation variables"""

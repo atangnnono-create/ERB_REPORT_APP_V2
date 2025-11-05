@@ -1,101 +1,17 @@
 import streamlit as st
-import pandas as pd
 import time
-import os
-import sys
-
-# Add backend to path for imports
-sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
-
-# Google Sheets configuration
-SPREADSHEET_ID = "1HjPHcU34kV9yPQsl2u5tDbkVkCWcqXrAjG7l8O8j68c"
-SHEET_NAME = "Messages"
-CREDENTIALS_FILE = "service_account.json"
+from services.enhanced_api_client import EnhancedAPIClient
 
 
-def check_internet_connection():
-    """Check if internet connection is available"""
-    try:
-        import socket
-        socket.create_connection(("www.google.com", 80), timeout=5)
-        return True
-    except OSError:
-        return False
+def contact_page(api: EnhancedAPIClient):
+    """Enhanced contact form with pre-filled user data and email delivery"""
 
+    # Check authentication status
+    is_logged_in = st.session_state.get('logged_in', False)
+    user_name = st.session_state.get('full_name', '')
+    user_email = st.session_state.get('user_email', '')
+    user_role = st.session_state.get('user_role', '')
 
-def check_google_services():
-    """Check if Google services are accessible"""
-    try:
-        import socket
-        socket.gethostbyname('oauth2.googleapis.com')
-        socket.gethostbyname('www.googleapis.com')
-        return True
-    except socket.gaierror:
-        return False
-
-
-def initialize_google_sheets():
-    """Initialize Google Sheets client with error handling"""
-    try:
-        if not os.path.exists(CREDENTIALS_FILE):
-            return None
-
-        if not check_internet_connection():
-            return None
-
-        if not check_google_services():
-            return None
-
-        import gspread
-        from google.auth.exceptions import TransportError, DefaultCredentialsError
-
-        gc = gspread.service_account(filename=CREDENTIALS_FILE)
-        sheet = gc.open_by_key(SPREADSHEET_ID).worksheet(SHEET_NAME)
-        return sheet
-
-    except Exception as e:
-        return None
-
-
-def submit_to_google_sheets(name, email, message, sheet):
-    """Submit form data to Google Sheets"""
-    try:
-        timestamp = pd.Timestamp.now().strftime("%Y-%m-%d %H:%M:%S")
-        sheet.append_row([timestamp, name, email, message])
-        return True
-    except Exception as e:
-        return False
-
-
-def save_to_local_backup(name, email, message):
-    """Save form data to local file as backup"""
-    try:
-        backup_file = "contact_backup.csv"
-        timestamp = pd.Timestamp.now().strftime("%Y-%m-%d %H:%M:%S")
-
-        os.makedirs("backups", exist_ok=True)
-        backup_path = os.path.join("backups", backup_file)
-
-        new_data = pd.DataFrame({
-            'timestamp': [timestamp],
-            'name': [name],
-            'email': [email],
-            'message': [message]
-        })
-
-        if os.path.exists(backup_path):
-            existing_data = pd.read_csv(backup_path)
-            updated_data = pd.concat([existing_data, new_data], ignore_index=True)
-        else:
-            updated_data = new_data
-
-        updated_data.to_csv(backup_path, index=False)
-        return True
-    except Exception as e:
-        return False
-
-
-def show():
     st.set_page_config(
         page_title="Contact Us - Engineering Report Deck",
         page_icon="📞",
@@ -137,12 +53,12 @@ def show():
         box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
         margin-bottom: 1rem;
     }
-    .status-card {
-        background: #f8f9fa;
-        padding: 1rem;
-        border-radius: 8px;
-        border: 1px solid #dee2e6;
-        font-size: 0.9rem;
+    .user-info-card {
+        background: linear-gradient(135deg, #e8f4fd 0%, #d1ecf1 100%);
+        padding: 1.5rem;
+        border-radius: 10px;
+        border-left: 4px solid #3498db;
+        margin-bottom: 1rem;
     }
     .stButton button {
         background: linear-gradient(135deg, #1f3a60, #4a6fa5);
@@ -212,45 +128,46 @@ def show():
         st.markdown("""
         <div style='background: linear-gradient(135deg, #1f3a60, #4a6fa5); color: white; padding: 2rem; border-radius: 15px; text-align: center;'>
             <h3 style='color: white; margin-bottom: 1rem;'>🚀 Quick Support</h3>
-            <p style='margin-bottom: 0.5rem;'>• 24-48 Hour Response Time</p>
+            <p style='margin-bottom: 0.5rem;'>• 24 Hour Response Time</p>
             <p style='margin-bottom: 0.5rem;'>• Technical Experts Available</p>
-            <p style='margin-bottom: 0;'>• Priority Support for Enterprise</p>
+            <p style='margin-bottom: 0;'>• Direct Email Delivery</p>
         </div>
         """, unsafe_allow_html=True)
 
     st.markdown('<hr class="divider">', unsafe_allow_html=True)
 
-    # Contact Form Section
-    st.markdown('<div class="sub-header">Send Us a Message</div>', unsafe_allow_html=True)
-
-    # Initialize Google Sheets connection
-    sheet = initialize_google_sheets()
-
-    # Connection Status Card
-    if sheet is None:
-        st.markdown("""
-        <div class="info-card" style='border-left-color: #e74c3c;'>
+    # User Context Display
+    if is_logged_in:
+        st.markdown(f"""
+        <div class="user-info-card">
             <div style='display: flex; align-items: center; margin-bottom: 0.5rem;'>
-                <span style='font-size: 1.2rem; margin-right: 0.5rem;'>⚠️</span>
-                <strong style='color: #e74c3c;'>Temporary Offline Mode</strong>
+                <span style='font-size: 1.5rem; margin-right: 0.5rem;'>👤</span>
+                <div>
+                    <strong style='color: #2c3e50; font-size: 1.2rem;'>Welcome, {user_name}!</strong>
+                    <div style='color: #3498db; font-size: 0.9rem;'>Role: {user_role}</div>
+                </div>
             </div>
-            <p style='margin: 0; color: #666;'>
-                Google Sheets integration is temporarily unavailable. Your message will be saved locally and automatically synchronized when the connection is restored.
+            <p style='margin: 0; color: #666; font-size: 0.9rem;'>
+                Your account email will be used for the response. This field is pre-filled and read-only.
             </p>
         </div>
         """, unsafe_allow_html=True)
     else:
         st.markdown("""
-        <div class="info-card" style='border-left-color: #27ae60;'>
+        <div class="info-card">
             <div style='display: flex; align-items: center; margin-bottom: 0.5rem;'>
-                <span style='font-size: 1.2rem; margin-right: 0.5rem;'>✅</span>
-                <strong style='color: #27ae60;'>All Systems Operational</strong>
+                <span style='font-size: 1.2rem; margin-right: 0.5rem;'>🔐</span>
+                <strong style='color: #1f3a60;'>Guest Mode</strong>
             </div>
             <p style='margin: 0; color: #666;'>
-                Your message will be delivered instantly to our support team.
+                Please provide your contact information. 
+                <a href="/?page=Login" style='color: #3498db; text-decoration: none;'>Sign in</a> to pre-fill your details automatically.
             </p>
         </div>
         """, unsafe_allow_html=True)
+
+    # Contact Form Section
+    st.markdown('<div class="sub-header">Send Us a Message</div>', unsafe_allow_html=True)
 
     # Contact Form
     with st.container():
@@ -262,6 +179,7 @@ def show():
             with col1:
                 name = st.text_input(
                     "**Full Name** *",
+                    value=user_name if is_logged_in else "",
                     placeholder="Enter your full name",
                     help="Please provide your complete name for proper addressing"
                 )
@@ -269,13 +187,24 @@ def show():
             with col2:
                 email = st.text_input(
                     "**Email Address** *",
+                    value=user_email if is_logged_in else "",
                     placeholder="your.email@company.com",
+                    disabled=is_logged_in,  # Make read-only for logged-in users
                     help="We'll use this to respond to your inquiry"
                 )
 
+                if is_logged_in:
+                    st.caption("🔒 Using your verified account email")
+
+            subject = st.text_input(
+                "**Subject** *",
+                placeholder="Brief description of your inquiry",
+                help="What is this message about?"
+            )
+
             message = st.text_area(
                 "**Your Message** *",
-                placeholder="Please describe your inquiry in detail. Include any relevant information about your engineering reports, technical issues, or feature requests...",
+                placeholder="""Please describe your inquiry in detail. Include any relevant information about your engineering reports, technical issues, or feature requests...""",
                 height=150,
                 help="The more details you provide, the better we can assist you"
             )
@@ -290,52 +219,54 @@ def show():
 
             if submitted:
                 # Validation
-                if not name or not email or not message:
+                if not all([name, email, subject, message]):
                     st.error("**Please fill in all required fields** (*)")
                     st.info("All fields are required to ensure we can properly assist you.")
-                    return
-
-                if "@" not in email or "." not in email:
+                elif not is_logged_in and ("@" not in email or "." not in email):
                     st.error("**Please enter a valid email address**")
                     st.info("We need a valid email to respond to your inquiry.")
-                    return
-
-                # Processing
-                with st.spinner("**Sending your message...**"):
-                    time.sleep(1)  # Simulate processing
-
-                    success = False
-                    submission_method = ""
-
-                    if sheet:
-                        success = submit_to_google_sheets(name, email, message, sheet)
-                        submission_method = "our secure database"
-
-                    if not success:
-                        success = save_to_local_backup(name, email, message)
-                        submission_method = "local storage"
+                elif len(message.strip()) < 10:
+                    st.error("**Please provide a more detailed message**")
+                    st.info("Your message should be at least 10 characters long.")
+                else:
+                    # Processing
+                    with st.spinner("**📤 Sending your message...**"):
+                        # Submit to backend API
+                        success, result = api.submit_contact_form({
+                            "name": name.strip(),
+                            "email": email.strip(),
+                            "subject": subject.strip(),
+                            "message": message.strip()
+                        })
 
                     if success:
                         st.success(f"""
                         **✅ Thank you, {name}!**
 
-                        Your message has been received and saved to {submission_method}. 
-                        Our team will review your inquiry and get back to you within 24-48 hours.
+                        Your message has been delivered directly to our support team. 
+                        We'll review your inquiry and get back to you within 24 hours.
                         """)
                         st.balloons()
 
-                        if submission_method == "local storage":
-                            st.info("""
-                            **📝 Local Storage Notice**
-                            Your message has been securely saved locally and will be automatically synchronized 
-                            with our main system when connectivity is restored.
-                            """)
-                    else:
-                        st.error("""
-                        **❌ Submission Issue**
+                        # Show confirmation details
+                        with st.expander("📋 Message Summary", expanded=True):
+                            st.write(f"**From:** {name}")
+                            st.write(f"**Email:** {email}")
+                            st.write(f"**Subject:** {subject}")
+                            st.write(f"**Sent:** {time.strftime('%Y-%m-%d %H:%M:%S')}")
 
-                        We encountered a technical issue while saving your message. 
-                        Please try again in a few moments or use one of the alternative contact methods below.
+                            if is_logged_in:
+                                st.write(f"**User Role:** {user_role}")
+                                st.write("**Status:** ✅ Sent from verified account")
+                    else:
+                        error_msg = result.get('detail', 'Unknown error occurred')
+                        st.error(f"""
+                        **❌ Failed to send message**
+
+                        Error: {error_msg}
+
+                        Please try again in a few moments, or contact us directly at 
+                        **customengineeringreports@gmail.com**
                         """)
 
         st.markdown('</div>', unsafe_allow_html=True)
@@ -377,51 +308,21 @@ def show():
         </div>
         """, unsafe_allow_html=True)
 
-    # Technical Information Section
-    with st.expander("**🔧 System Status & Technical Information**", expanded=False):
-        st.markdown("""
-        <div style='background: #f8f9fa; padding: 1.5rem; border-radius: 10px;'>
-            <h4 style='color: #1f3a60; margin-bottom: 1rem;'>Current System Status</h4>
-        </div>
-        """, unsafe_allow_html=True)
-
-        col1, col2, col3 = st.columns(3)
-
-        with col1:
-            internet_status = "✅ **Operational**" if check_internet_connection() else "❌ **Offline**"
-            st.markdown(f"**Internet Connection:** {internet_status}")
-
-        with col2:
-            google_status = "✅ **Available**" if check_google_services() else "❌ **Unavailable**"
-            st.markdown(f"**Google Services:** {google_status}")
-
-        with col3:
-            sheets_status = "✅ **Connected**" if sheet else "❌ **Disconnected**"
-            st.markdown(f"**Database:** {sheets_status}")
-
-        if sheet is None:
-            st.markdown("""
-            <div class="info-card" style='margin-top: 1rem;'>
-                <h5 style='color: #e74c3c; margin-bottom: 0.5rem;'>Connection Issues</h5>
-                <p style='margin: 0; color: #666; font-size: 0.9rem;'>
-                    This is typically caused by network restrictions, firewall settings, or temporary service outages. 
-                    Your data remains secure and will sync when connectivity is restored.
-                </p>
-            </div>
-            """, unsafe_allow_html=True)
-
+    # Footer
     st.markdown("""
-             <div style='text-align: center; margin-top: 3rem; padding: 2rem; background: #f8f9fa; border-radius: 10px;'>
-                 <p style='color: #666; margin: 0;'>
-                     <strong>Engineering Report Deck</strong> • Confidence with Clarity
-                 </p>
-                 <p style='color: #888; font-size: 0.9rem; margin: 0.5rem 0 0 0;'>
-                     TurtleTEC Solutions Africa
-                     © 2025. ALL RIGHTS RESERVED.
-                 </p>
-             </div>
-             """, unsafe_allow_html=True)
+    <div style='text-align: center; margin-top: 3rem; padding: 2rem; background: #f8f9fa; border-radius: 10px;'>
+        <p style='color: #666; margin: 0;'>
+            <strong>Engineering Report Deck</strong> • Confidence with Clarity
+        </p>
+        <p style='color: #888; font-size: 0.9rem; margin: 0.5rem 0 0 0;'>
+            TurtleTEC Solutions Africa
+            © 2025. ALL RIGHTS RESERVED.
+        </p>
+    </div>
+    """, unsafe_allow_html=True)
 
 
 if __name__ == "__main__":
-    show()
+    from services.enhanced_api_client import api_client
+
+    contact_page(api_client)

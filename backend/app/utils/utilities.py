@@ -278,6 +278,7 @@ class AuditActions:
     PASSWORD_RESET_REQUEST = "password_reset_request"
     PASSWORD_RESET_COMPLETE = "password_reset_complete"
     PASSWORD_CHANGE = "password_change"
+    CONTACT_SUBMISSION = "contact_admin"
 
 
     __all__ = [
