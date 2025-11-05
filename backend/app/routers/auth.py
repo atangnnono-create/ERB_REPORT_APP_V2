@@ -9,7 +9,8 @@ import secrets
 from backend.app.core import security
 from backend.app.core.database import get_db
 from backend.app.services.email_service import email_service
-from backend.app.utils.utilities import (audit_service, AuditActions, create_access_token, ACCESS_TOKEN_EXPIRE_MINUTES, verify_password)
+from backend.app.core.config import settings
+from backend.app.utils.utilities import (audit_service, AuditActions, create_access_token, verify_password)
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
@@ -212,7 +213,7 @@ def login(form_data: OAuth2PasswordRequestForm = Depends(), request: Request = N
         request=request
     )
 
-    access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = create_access_token(
         data={"sub": db_user.username}, expires_delta=access_token_expires
     )
