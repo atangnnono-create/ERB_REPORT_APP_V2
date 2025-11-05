@@ -5,32 +5,31 @@ from pydantic import BaseModel, validator
 
 load_dotenv()
 
-
 class Settings(BaseModel):
-    # Environment variables (Pydantic will auto-load these from .env)
-    OPENAI_API_KEY: Optional[str] = None
-    DATABASE_URL: str = "DATABASE_URL"
-    SECRET_KEY: str = "SECRET_KEY"
-    ALGORITHM: str = "ALGORITHM"
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = "ACCESS_TOKEN_EXPIRE_MINUTES"
-    GOOGLE_SERVICE_ACCOUNT_JSON_PATH: Optional[str] = None
-    SPREADSHEET_ID: Optional[str] = None
-    SHEET_NAME: Optional[str] = None
-    ADMIN_USERNAME: str = "ADMIN_USERNAME"
-    ADMIN_PASSWORD: str = "ADMIN_PASSWORD"
-    ADMIN_EMAIL: str = "ADMIN_EMAIL"
-    ADMIN_FULL_NAME: str = "ADMIN_FULL_NAME"
-    SMTP_SERVER: str = "SMTP_SERVER"
-    SMTP_PORT: int = "SMTP_PORT"
-    SMTP_USERNAME: str = "SMTP_USERNAME"
-    SMTP_PASSWORD: str = "SMTP_PASSWORD"
-    FROM_EMAIL: str = "noreply@engineeringreports.com"
-    BASE_URL: str = "BASE_URL"
-    SMTP_TIMEOUT: int = 30
-    ENVIRONMENT: str = "ENVIRONMENT"
+    # Environment variables - use os.getenv() to read from environment
+    OPENAI_API_KEY: Optional[str] = os.getenv("OPENAI_API_KEY")
+    DATABASE_URL: str = os.getenv("DATABASE_URL", "sqlite:///./reports.db")
+    SECRET_KEY: str = os.getenv("SECRET_KEY", "dev-key-change-in-production")
+    ALGORITHM: str = os.getenv("ALGORITHM", "HS256")
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "30"))
+    GOOGLE_SERVICE_ACCOUNT_JSON_PATH: Optional[str] = os.getenv("GOOGLE_SERVICE_ACCOUNT_JSON_PATH")
+    SPREADSHEET_ID: Optional[str] = os.getenv("SPREADSHEET_ID")
+    SHEET_NAME: Optional[str] = os.getenv("SHEET_NAME")
+    ADMIN_USERNAME: str = os.getenv("ADMIN_USERNAME", "fluid")
+    ADMIN_PASSWORD: str = os.getenv("ADMIN_PASSWORD", "")
+    ADMIN_EMAIL: str = os.getenv("ADMIN_EMAIL", "customengineeringreports@gmail.com")
+    ADMIN_FULL_NAME: str = os.getenv("ADMIN_FULL_NAME", "Lefa-Molokwe")
+    SMTP_SERVER: str = os.getenv("SMTP_SERVER", "smtp.gmail.com")
+    SMTP_PORT: int = int(os.getenv("SMTP_PORT", "587"))
+    SMTP_USERNAME: str = os.getenv("SMTP_USERNAME", "")
+    SMTP_PASSWORD: str = os.getenv("SMTP_PASSWORD", "")
+    FROM_EMAIL: str = os.getenv("FROM_EMAIL", "noreply@engineeringreports.com")
+    BASE_URL: str = os.getenv("BASE_URL", "http://localhost:8501")
+    SMTP_TIMEOUT: int = int(os.getenv("SMTP_TIMEOUT", "30"))
+    ENVIRONMENT: str = os.getenv("ENVIRONMENT", "development")
     APP_NAME: str = "Engineering Report Deck"
-    RATE_LIMIT_REQUESTS: int = 100
-    RATE_LIMIT_WINDOW: int = 3600
+    RATE_LIMIT_REQUESTS: int = int(os.getenv("RATE_LIMIT_REQUESTS", "100"))
+    RATE_LIMIT_WINDOW: int = int(os.getenv("RATE_LIMIT_WINDOW", "3600"))
 
     # CORS - this needs special handling
     allowed_origins: List[str] = ["http://localhost:3000", "http://localhost:8501"]
@@ -71,7 +70,6 @@ class Settings(BaseModel):
     @property
     def is_development(self) -> bool:
         return self.ENVIRONMENT == "development"
-
 
 # Create global settings instance
 settings = Settings()
