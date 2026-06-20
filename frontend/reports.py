@@ -1,9 +1,10 @@
+import os
 import streamlit as st
 import requests
 import json
 from api_client import APIClient
 
-API_BASE_URL = "https://erb-backend.onrender.com"
+API_BASE_URL = os.environ.get("BACKEND_URL", "https://erb-backend.onrender.com")
 
 
 def fetch_reports(token: str):
